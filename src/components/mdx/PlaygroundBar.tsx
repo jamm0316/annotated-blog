@@ -13,12 +13,14 @@ export function PlaygroundBar({ value, limit, limitLabel, label }: Props) {
   const within = Math.min(value, limit);
   const over = Math.max(0, value - limit);
   const scale = Math.max(value, limit * 1.25);
+  const at = (limit / scale) * 100;
 
   return (
     <div className="playground__bar" role="img" aria-label={label}>
       <span className="playground__acquired" style={{ width: `${(within / scale) * 100}%` }} />
       <span className="playground__waiting" style={{ width: `${(over / scale) * 100}%` }} />
-      <span className="playground__pool" style={{ left: `${(limit / scale) * 100}%` }}>
+      {/* 한도선이 오른쪽 끝에 가까우면 라벨을 선 왼쪽에 붙여 그림 밖으로 나가지 않게 한다 */}
+      <span className={`playground__pool${at > 60 ? ' playground__pool--end' : ''}`} style={{ left: `${at}%` }}>
         <span className="mono">{limitLabel}</span>
       </span>
     </div>

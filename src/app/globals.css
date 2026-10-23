@@ -61,6 +61,8 @@ body {
 
 html {
   scroll-padding-top: 24px;
+  /* 무엇이 넘치더라도 페이지 전체가 옆으로 밀리지 않게 한다. 넘치는 원인은 각 요소에서 따로 고친다. */
+  overflow-x: clip;
 }
 
 body {
@@ -448,6 +450,11 @@ a {
 }
 
 /* 본문 요소 */
+/* 긴 URL·인라인 코드가 줄을 넘기지 못해 화면 밖으로 나가지 않게 한다 */
+.prose,
+.figure figcaption {
+  overflow-wrap: anywhere;
+}
 .prose h2 {
   font-size: 21px;
   line-height: 1.5;
@@ -509,6 +516,7 @@ a {
   line-height: 1.75;
   padding: 20px 16px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 .prose code {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -526,9 +534,11 @@ a {
 .table-wrap {
   margin: 32px 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 .prose table {
   width: 100%;
+  overflow-wrap: normal;
   border-collapse: collapse;
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
@@ -655,6 +665,10 @@ a {
   left: 6px;
   font-size: 12px;
   white-space: nowrap;
+}
+.playground__pool--end span {
+  left: auto;
+  right: 6px;
 }
 .playground__legend {
   display: flex;
@@ -842,6 +856,18 @@ a {
   }
   .frame {
     padding: 20px 16px;
+  }
+  /* 좁은 화면에서는 코드·표를 조금 줄여 옆으로 밀어야 하는 경우를 줄인다 */
+  .prose pre {
+    padding: 16px 12px;
+    font-size: 13px;
+  }
+  .prose table {
+    font-size: 13px;
+  }
+  .prose th,
+  .prose td {
+    padding: 8px;
   }
   .playground__field {
     grid-template-columns: minmax(0, 1fr) 88px;
