@@ -92,6 +92,57 @@ a {
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
+/* 링크 반응: 밑줄이 굵어지며 글자 쪽으로 당겨진다. 색은 바꾸지 않는다. */
+.prose a,
+.titleblock__links a {
+  transition:
+    text-decoration-thickness var(--dur-instant) ease-out,
+    text-underline-offset var(--dur-instant) ease-out;
+}
+@media (hover: hover) {
+  .prose a:hover,
+  .titleblock__links a:hover {
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+  }
+}
+/* 누르는 동안 단추가 살짝 눌린다 */
+button {
+  transition: transform var(--dur-instant) ease-out;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* 목차를 눌러 이동할 때는 미끄러지듯 내려간다 */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* 테마 전환: 새 테마가 단추 자리에서 원으로 번진다. 좌표는 ThemeToggle 이 넣는다. */
+@keyframes theme-spread {
+  from {
+    clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0));
+  }
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0));
+  }
+}
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  animation: theme-spread var(--dur-fast) var(--ease-out);
+  mix-blend-mode: normal;
+}
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition: none !important;
+}
 
 .mono {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -153,9 +204,6 @@ a {
   cursor: pointer;
   transition: transform var(--dur-instant) ease-out;
 }
-.icon-btn:active {
-  transform: scale(0.96);
-}
 
 /* 제목 입장: 왼쪽부터 그어지듯 드러난다 */
 @keyframes draw {
@@ -213,7 +261,7 @@ a {
   margin: 0;
   font-size: 21px;
   line-height: 1.4;
-  animation: draw var(--dur-slow) var(--ease-out) 140ms both;
+  animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
 }
 
 .section-head {
@@ -270,11 +318,37 @@ a {
 .row__date {
   text-align: right;
 }
+/* 행에 손을 올리면 제목이 ▸ 를 앞세우고 한 칸 밀려난다. 다른 행은 흐리지 않는다(글자 투명도 하한). */
+.row__title {
+  position: relative;
+  transition: transform var(--dur-instant) ease-out;
+}
+.row__title::before {
+  content: '▸';
+  position: absolute;
+  top: 0;
+  left: -16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: inherit;
+  line-height: inherit;
+  opacity: 0;
+  transition: opacity var(--dur-instant) ease-out;
+}
+.row:focus-visible .row__title {
+  transform: translateX(16px);
+}
+.row:focus-visible .row__title::before {
+  opacity: 1;
+}
 @media (hover: hover) {
   .row:hover .row__title {
+    transform: translateX(16px);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 5px;
+  }
+  .row:hover .row__title::before {
+    opacity: 1;
   }
 }
 .badge {
@@ -352,11 +426,11 @@ a {
   transition:
     height var(--dur-fast) ease-out,
     border-radius var(--dur-fast) ease-out,
-    width 900ms var(--ease-out) var(--dur-fast);
+    width var(--dur-slow) var(--ease-out) var(--dur-fast);
 }
 .end-mark__word {
   opacity: 0;
-  transition: opacity var(--dur-fast) ease-out 1000ms;
+  transition: opacity var(--dur-fast) ease-out calc(var(--dur-fast) + var(--dur-slow));
 }
 .end-mark.is-drawn .end-mark__line {
   width: calc(100% - 28px);
@@ -462,6 +536,29 @@ a {
   font-size: 16px;
   line-height: 1.6;
   margin: 40px 0 12px;
+}
+/* 지금 읽는 소제목: 눈금자와 같은 ▸ 가 본문 왼쪽 여백에 붙는다 */
+.prose :is(h2, h3) {
+  position: relative;
+}
+.prose :is(h2, h3)::before {
+  content: '▸';
+  position: absolute;
+  top: 0;
+  left: -18px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 400;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+.prose :is(h2, h3)[data-current]::before {
+  opacity: 1;
+  transform: none;
 }
 /* 코드 블록은 테마와 상관없이 늘 남색 바탕에 밝은 글자로 둔다. 본문 속에서 눈에 띄게 하려는 것이다. */
 .code {
@@ -697,12 +794,11 @@ a {
 .article__header,
 .prose {
   transition:
-    filter var(--dur-slow) var(--ease-out) 300ms,
-    opacity var(--dur-slow) var(--ease-out) 300ms;
+    filter var(--dur-slow) var(--ease-out) var(--dur-fast);
 }
+/* 흐림만 준다. 투명도를 내리면 글자 투명도 하한(70%)을 깬다. */
 :root[data-reading-done] :is(.post-shell__ruler, .article__header, .prose) {
   filter: blur(3px);
-  opacity: 0.4;
 }
 .next-nav {
   border-top: 1px solid var(--ink);
@@ -744,7 +840,7 @@ a {
   transform: translateY(32px);
 }
 .next-nav__item + .next-nav__item {
-  transition-delay: 120ms;
+  transition-delay: var(--dur-instant);
 }
 .next-nav__meta {
   display: flex;
@@ -891,6 +987,12 @@ a {
   .ruler__dot,
   .ruler__tick,
   .ruler__label,
+  button,
+  .prose a,
+  .titleblock__links a,
+  .row__title,
+  .row__title::before,
+  .prose :is(h2, h3)::before,
   .playground__acquired,
   .playground__waiting,
   .playground__pool {
@@ -907,5 +1009,11 @@ a {
   .next-nav[data-state='waiting'] .next-nav__item {
     opacity: 1;
     transform: none;
+  }
+  button:active:not(:disabled) {
+    transform: none;
+  }
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

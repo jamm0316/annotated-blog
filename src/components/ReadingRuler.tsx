@@ -7,6 +7,7 @@ type Tick = { id: string; label: string; major: boolean; at: number };
 // 본문 소제목을 눈금으로 옮긴 세로 자. 지금 읽는 소제목에 ▸ 가 붙는다.
 // 눈금 위치는 본문 안에서 소제목이 놓인 비율이고, 점은 같은 비율로 읽은 위치를 따라간다.
 // 점이 자 끝에 닿으면 사라지고 본문 끝의 선(EndMark)이 이어받는다.
+// 지금 읽는 소제목에는 본문 쪽에도 data-current 를 달아 ▸ 를 붙인다. 자가 숨는 좁은 화면에서도 위치가 보인다.
 export function ReadingRuler() {
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [active, setActive] = useState(-1);
@@ -43,6 +44,7 @@ export function ReadingRuler() {
         if (h.getBoundingClientRect().top <= line) current = i;
       });
       setActive(current);
+      heads.forEach((h, i) => h.toggleAttribute('data-current', i === current));
       const rect = prose.getBoundingClientRect();
       setProgress(Math.min(1, Math.max(0, (line - rect.top) / (rect.height || 1))));
     };
@@ -55,6 +57,7 @@ export function ReadingRuler() {
     return () => {
       ro.disconnect();
       window.removeEventListener('scroll', onScroll);
+      heads.forEach((h) => h.removeAttribute('data-current'));
     };
   }, []);
 

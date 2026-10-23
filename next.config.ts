@@ -1,3 +1,4 @@
+import path from 'node:path';
 import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 import { createCssVariablesTheme } from 'shiki';
@@ -10,7 +11,12 @@ const nextConfig: NextConfig = {
 // Turbopack 은 플러그인 옵션을 직렬화해서 넘기므로 플러그인을 import 하지 않고 이름 문자열로 적는다.
 const withMDX = createMDX({
   options: {
-    remarkPlugins: [['remark-frontmatter'], ['remark-gfm']],
+    // 로컬 플러그인도 같은 이유로 절대 경로 문자열로 넘긴다. 빌드는 프로젝트 루트에서 돈다.
+    remarkPlugins: [
+      ['remark-frontmatter'],
+      ['remark-gfm'],
+      [path.join(process.cwd(), 'src/lib/remark-unnest-links.mjs')],
+    ],
     rehypePlugins: [
       ['rehype-slug'],
       [

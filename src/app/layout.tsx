@@ -29,7 +29,7 @@ const themeScript = `try{if(localStorage.getItem('theme')==='dark')document.docu
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="ko" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="ko" data-scroll-behavior="smooth" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
