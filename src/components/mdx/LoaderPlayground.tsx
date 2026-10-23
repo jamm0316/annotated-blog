@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PlaygroundBar } from './PlaygroundBar';
 
 type Props = {
   /** 재생성 시간 T (ms) — 본문 값 */
@@ -20,7 +21,6 @@ export function LoaderPlayground({ t: t0, r: r0, pool, caption }: Props) {
   const loaders = Math.round((t / 1000) * r);
   const acquired = Math.min(loaders, pool);
   const waiting = Math.max(0, loaders - pool);
-  const scale = Math.max(loaders, pool * 1.25);
   const changed = t !== t0 || r !== r0;
 
   return (
@@ -42,13 +42,12 @@ export function LoaderPlayground({ t: t0, r: r0, pool, caption }: Props) {
         동시 로더 ≒ {(t / 1000).toFixed(3)}초 × {r}건 ≈ <strong>{loaders}개</strong>
       </p>
 
-      <div className="playground__bar" role="img" aria-label={`커넥션 획득 ${acquired}개, 대기 ${waiting}개`}>
-        <span className="playground__acquired" style={{ width: `${(acquired / scale) * 100}%` }} />
-        <span className="playground__waiting" style={{ width: `${(waiting / scale) * 100}%` }} />
-        <span className="playground__pool" style={{ left: `${(pool / scale) * 100}%` }}>
-          <span className="mono">풀 {pool}</span>
-        </span>
-      </div>
+      <PlaygroundBar
+        value={loaders}
+        limit={pool}
+        limitLabel={`풀 ${pool}`}
+        label={`커넥션 획득 ${acquired}개, 대기 ${waiting}개`}
+      />
       <p className="playground__legend mono">
         <span>커넥션 획득 {acquired}</span>
         <span>대기 {waiting}</span>

@@ -4,7 +4,9 @@ import { useRef, useState, type ComponentProps } from 'react';
 
 const LABELS: Record<string, string> = {
   bash: 'Shell',
+  dockerfile: 'Dockerfile',
   html: 'HTML',
+  http: 'HTTP',
   java: 'Java',
   json: 'JSON',
   jsonc: 'JSON',

@@ -35,7 +35,35 @@ draft: false
 - 로컬 환경: 그룹 노드 10,000개 → 676ms
 - 개발 환경: 그룹 약 1,000개 → 서버 시간 376ms
 
-<Figure src="/posts/three-questions-before-caching/02.png" alt="" width={2048} height={1756} />
+```jsonc
+// GET http://localhost:8081/groups/tree → 200 OK · 676 ms · 922.96 KB
+{
+  "code": "200",
+  "message": "operation success",
+  "data": {
+    "indexUid": "groupHierarchies",
+    "documents": [
+      {
+        "authGroupsId": 1,
+        "groupName": "기본 그룹",
+        "memberCount": 2,
+        "order": 0,
+        "children": []
+      },
+      {
+        "authGroupsId": 100000,
+        "groupName": "그룹-100000",
+        "memberCount": 3,
+        "order": 247,
+        "children": [
+          {
+            "authGroupsId": 100750,
+            "groupName": "그룹-100750",
+            "memberCount": 4,
+            "order": 308,
+            "children": [
+              // … 하위 그룹이 같은 모양으로 이어진다 (이하 생략)
+```
 
 <Figure src="/posts/three-questions-before-caching/03.png" alt="[그림 1] 로컬 환경 측정 — 10,000개 노드, 676ms, [그림 2] Dev 환경 서버 시간 Timing(X-Envoy-Upstream-Service-Time 헤더 측정결과: 376ms)" width={770} height={358}>
   [그림 1] 로컬 환경 측정 — 10,000개 노드, 676ms, [그림 2] Dev 환경 서버 시간 Timing(X-Envoy-Upstream-Service-Time 헤더 측정결과: 376ms)
@@ -62,7 +90,10 @@ draft: false
 
 memberCountMs가 334ms → 105ms, 1/3로 줄었습니다. 캐시를 한 줄도 쓰기 전에요. 응답 시간이 데이터 양에 비례하지 않던 이유도 여기서 설명이 됩니다. 비용을 만들던 건 데이터의 양이 아니라, 1만 개 ID를 일일이 대조하던 쿼리의 형태였던 겁니다.
 
-<Figure src="/posts/three-questions-before-caching/04.png" alt="" width={2048} height={414} />
+```text
+[getFullTree] groups=10008 totalMs=401 |
+              getAllMs=267 memberCountMs=105 indexMs=7 buildTreeMs=19
+```
 
 | 구간 | $in 포함 (전) | $in 제거 (후) |
 | --- | --- | --- |

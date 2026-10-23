@@ -54,6 +54,8 @@ draft: false
 | --- | --- |
 | `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP |
 | `<LoaderPlayground t r pool caption />` | 동시 로더 수 ≒ T × R 을 독자가 바꿔 보는 그림 (`cache-stampede`) |
+| `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
+| `<BatchPlayground n batch batchMb caption />` | 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리 (`stream-pipeline-download-oom`) |
 
 - 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
 - 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.

@@ -602,7 +602,7 @@ a {
 }
 .playground__field {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 64px;
+  grid-template-columns: 120px minmax(0, 1fr) 88px;
   align-items: center;
   gap: 16px;
 }
@@ -844,7 +844,7 @@ a {
     padding: 20px 16px;
   }
   .playground__field {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr) 88px;
   }
   .playground__field span {
     grid-column: 1 / -1;

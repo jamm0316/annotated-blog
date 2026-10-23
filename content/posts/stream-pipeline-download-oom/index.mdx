@@ -98,6 +98,8 @@ stream을 설계할 때 가장 고민한 부분이 batch buffer 크기였습니�
 
 batch buffer 한 묶음은 chatLogsId 약 2,000개와 그에 매칭되는 feedback 객체 최대 2,000건입니다. 실측 기준 한 batch가 점유하는 메모리는 약 20MB 수준으로, JVM 힙 한도 2.8GB 안에서 충분히 여유롭습니다.
 
+<BatchPlayground n={180000} batch={2000} batchMb={20} caption="N과 batch 크기를 바꾸면 쿼리(round-trip) 수가 다시 계산된다. batch 메모리는 2,000건 실측 20MB를 비례로 늘린 추정이다" />
+
 > <em>두 기준을 종합해 </em><strong><em>2,000건</em></strong><em> 으로 결정했습니다. 18만 건 기준 90회 round-trip은 부담 없는 수준이고, batch당 20MB는 메모리 한도에 여유가 큽니다.</em>
 
 ### 정리

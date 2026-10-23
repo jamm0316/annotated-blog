@@ -114,13 +114,23 @@ After squashing, all context is lost. If a bug originated in step 2, your only o
 
 Scenario: While you’re working, a teammate commits to main
 
-<Figure src="/posts/broke-our-git-history/05.png" alt="" width={602} height={204} />
+```text
+main:    [C1] - [C2] - [C4(team)]
+                  ↓
+feature: [C1] - [C2] - [F1] - [F2]
+                  ↑ Branched off here
+```
 
 Merging in this state can cause conflicts and create complex history.
 
 <strong>Rebase</strong> repositions your work on top of the latest main: <br />After rebase:
 
-<Figure src="/posts/broke-our-git-history/06.png" alt="" width={858} height={192} />
+```text
+main:    [C1] - [C2] - [C4(team)]
+                         ↓
+feature: [C1] - [C2] - [C4] - [F1'] - [F2']
+                                ↑ Go to the latest rebase
+```
 
 Now merging is clean, history remains linear, and conflicts are resolved locally beforehand.
 
@@ -128,11 +138,18 @@ Now merging is clean, history remains linear, and conflicts are resolved locally
 
 <strong>Without </strong>`--no-ff`<strong>:</strong>
 
-<Figure src="/posts/broke-our-git-history/07.png" alt="" width={780} height={92} />
+```text
+main: [C1] - [C2] - [C4] - [F1] - [F2]
+                     ↑ Where does the feature start/end?
+```
 
 <strong>With</strong>`--no-ff`<strong>:</strong>
 
-<Figure src="/posts/broke-our-git-history/08.png" alt="" width={632} height={152} />
+```text
+main: [C1] - [C2] - [C4] - [Merge]
+                       ↓        ↑
+                     [F1] - [F2]
+```
 
 Merge commits make feature boundaries explicit: “This feature started here and ended here.” They correspond 1:1 with PRs, and rollbacks become simpler — just revert the merge commit.
 
@@ -267,13 +284,23 @@ git push --force-with-lease origin <작업 브랜치>
 1. <strong>Squash Merge의 함정<br /></strong> Squash Merge는 히스토리를 깔끔하게 만들어줍니다. <br />“WIP 커밋”, “다시 커밋”, “진짜 마지막” 같은 의미 없는 커밋들을 하나로 정리할 때 유용하죠. <br />하지만 이미 로컬에서 의미 있게 나눈 커밋들까지 합치면 문제가 생깁니다. <br />저는 4개 커밋을 이렇게 나눴습니다:<br />1. 구현<br />2. 수정<br />3. 리뷰 반영 <br />4. 문서 업데이트 <br />Squash하면 이게 전부 하나가 됩니다. 나중에 2번 단계에서 버그가 생겼다면? <br /><strong>전체를 되돌리거나, 전체를 유지하거나 둘 중 하나만 가능</strong>합니다.
 2. <strong>Rebase를 왜 해야 하나<br /></strong> 제가 복구를 실패한 이유가 바로 여기에 있습니다.<br /> Rebase 없이 merge하면 feature가 오래된 main 위에 있게 됩니다<br /><strong>상황: 내가 작업하는 동안 팀원이 main에 커밋</strong>
 
-<Figure src="/posts/broke-our-git-history/13.png" alt="" width={602} height={204} />
+```text
+main:    [C1] - [C2] - [C4(팀원)]
+                  ↓
+feature: [C1] - [C2] - [F1] - [F2]
+                  ↑ 여기서 분기했음
+```
 
 이 상태로 merge하면 충돌이 날 수 있고, 히스토리가 복잡해집니다. Rebase는 작업을 최신 main “위로" 옮기는 작업입니다.
 
 Rebase 후:
 
-<Figure src="/posts/broke-our-git-history/14.png" alt="" width={858} height={192} />
+```text
+main:    [C1] - [C2] - [C4(팀원)]
+                         ↓
+feature: [C1] - [C2] - [C4] - [F1'] - [F2']
+                                ↑ 최신 base 위로 이동
+```
 
 이제 merge하면 깔끔합니다. 선형 히스토리가 유지되고, 충돌도 로컬에서 미리 해결할 수 있죠.
 
@@ -283,11 +310,18 @@ Create Merge Commit은 기본적으로`--no-ff `옵션으로 작동합니다.<br
 
 <strong>— no-ff 없이:</strong>
 
-<Figure src="/posts/broke-our-git-history/15.png" alt="" width={780} height={92} />
+```text
+main: [C1] - [C2] - [C4] - [F1] - [F2]
+                     ↑ feature가 어디서 시작/끝?
+```
 
 <strong>— no-ff 사용:</strong>
 
-<Figure src="/posts/broke-our-git-history/16.png" alt="" width={632} height={152} />
+```text
+main: [C1] - [C2] - [C4] - [Merge]
+                       ↓        ↑
+                     [F1] - [F2]
+```
 
 Merge commit이 있으면 “이 기능은 여기서 시작해서 여기서 끝났다"가 명확해 집니다. <br />PR과 1:1로 대응되고, 롤백할 때도 Merge commit 하나만 되돌리면 됩니다.
 
