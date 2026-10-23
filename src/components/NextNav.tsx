@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 
 type Item = { slug: string; title: string; description: string; date: string; reason: string };
 
-// 다 읽고 이어서 볼 글. 끝까지 내려 이 칸의 윗변이 화면 가운데를 넘으면
-// 위의 본문이 흐려지고 카드가 아래에서 올라온다. 다시 위로 올리면 본문이 돌아온다.
+// 다 읽고 이어서 볼 글. 페이지 바닥까지 내리면 위의 본문이 흐려지고 카드가 아래에서 올라온다.
+// 다시 위로 올리면 본문이 돌아온다.
 export function NextNav({ items }: { items: Item[] }) {
   const ref = useRef<HTMLElement>(null);
   const [state, setState] = useState<'static' | 'waiting' | 'in'>('static');
@@ -15,7 +15,8 @@ export function NextNav({ items }: { items: Item[] }) {
     const el = ref.current;
     if (!el) return;
     const onScroll = () => {
-      const shown = el.getBoundingClientRect().top < window.innerHeight * 0.5;
+      const root = document.documentElement;
+      const shown = window.scrollY + window.innerHeight >= root.scrollHeight - 24;
       setState(shown ? 'in' : 'waiting');
       document.documentElement.toggleAttribute('data-reading-done', shown);
     };
@@ -34,10 +35,12 @@ export function NextNav({ items }: { items: Item[] }) {
         <div className="next-nav__list">
           {items.map((p) => (
             <Link key={p.slug} href={`/posts/${p.slug}`} className="next-nav__item frame">
-              <span className="mono next-nav__reason">▸ {p.reason}</span>
+              <span className="mono next-nav__meta">
+                <span>▸ {p.reason}</span>
+                <span>{p.date}</span>
+              </span>
               <span className="next-nav__title">{p.title}</span>
               {p.description && <span className="next-nav__desc">{p.description}</span>}
-              <span className="mono next-nav__date">{p.date}</span>
             </Link>
           ))}
         </div>
