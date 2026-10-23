@@ -82,7 +82,11 @@ stampede를 무조건 막아야하는 것은 아니다. 대응책에는 모두 �
 
 ### 3.1 evict로 비는 캐시에는 single-flight로 대응한다
 
-<Figure src="/posts/cache-stampede/02.png" alt="" width={436} height={150} />
+| 방식 | 하는 일 |
+| --- | --- |
+| 랜덤 TTL | 여러 키의 만료 시점을 흩어 놓는다 |
+| 확률적 조기 갱신(PER) | 만료되기 전에 미리 갱신해 둔다 |
+| single-flight | 로더를 1개로 줄이고 결과를 나머지가 공유한다 |
 
 랜덤 TTL과 PER은 TTL 만료를 전제로 만료 시점을 분산시키는 방식이다. 우리 캐시는 만료가 아니라 evict로 비워지므로 single-flight로 해결하기로 했다.
 
@@ -100,7 +104,10 @@ stampede를 무조건 막아야하는 것은 아니다. 대응책에는 모두 �
 
 ### 3.3 Redis는 싱글스레드인데 왜 락이 필요한가
 
-<Figure src="/posts/cache-stampede/03.png" alt="" width={285} height={110} />
+| 구분 | 보호하는 구간 |
+| --- | --- |
+| Redis 순차 실행 | 명령 1개 |
+| 우리에게 필요한 것 | GET → 376ms → SET |
 
 Redis는 락을 대신 걸어주는 것이 아니라, 락을 만들 수 있는 원자적 명령을 제공할 뿐이다.
 
@@ -110,7 +117,7 @@ locking 라이터는 이 구간 앞에 락 키를 SET NX로 만든다. NX는 키
 
 ### 3.4 캐시 라이터를 locking으로 교체했다
 
-```text
+```java
 // Before — non-locking: Redis 락 없음, 인스턴스마다 로더 1개
 RedisCacheManager.builder(connectionFactory)
 

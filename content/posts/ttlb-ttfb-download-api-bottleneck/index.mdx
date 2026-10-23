@@ -41,9 +41,12 @@ TTLB와 TTFB는 백엔드 면접에도 자주 나오는 개념입니다. 책에�
   [그림] 요청~응답 과정 모식도
 </Figure>
 
-<Figure src="/posts/ttlb-ttfb-download-api-bottleneck/03.png" alt="[표] TTLB와 TTFB의 개념" width={1582} height={226}>
-  [표] TTLB와 TTFB의 개념
-</Figure>
+| 지표 | 정의 | 무엇을 알 수 있나 |
+| --- | --- | --- |
+| TTLB (Time To Last Byte) | 요청부터 마지막 바이트까지 | 전체 응답 시간 |
+| TTFB (Time To First Byte) | 요청부터 첫 바이트까지 | 서버가 응답을 시작하기까지 — 단, 네트워크 RTT와 서버 처리가 섞여 있음 |
+
+<p className="table-caption">[표] TTLB와 TTFB의 개념</p>
 
 주의할 점이 있습니다. TTFB가 크다고 곧바로 “서버가 느리다"고 결론 내릴 수 없습니다. TTFB는 ‘<strong>클라이언트 → 서버 RTT + 서버 처리 시간 + 첫 바이트가 돌아오는 RTT’</strong>가 모두 합쳐진 값이기 때문입니다. 네트워크가 느린 환경에서 서버가 멀쩡해도 TTFB가 클 수 있죠.
 
@@ -59,7 +62,7 @@ API를 호출하고 Chrome Dev Tools의 Network 패널로 Timing을 분해했습
   [그림] Chrome Dev Tools로 측정한 Netowrk의 Timing
 </Figure>
 
-```plaintext
+```text
 전체 5.91s (= TTLB)
 ├─ Queueing + Stalled + Request sent ≈ 2.4ms
 ├─ Waiting for server response = 5.70s (TTFB)
@@ -111,9 +114,18 @@ API를 호출하고 Chrome Dev Tools의 Network 패널로 Timing을 분해했습
   [그림] 단계별 소요시간과 메모리 증가량
 </Figure>
 
-<Figure src="/posts/ttlb-ttfb-download-api-bottleneck/08.png" alt="[표] 로그별 측정 결과" width={1236} height={652}>
-  [표] 로그별 측정 결과
-</Figure>
+| 단계 | 동작 | 단계 소요 | ΔHeap | 누적 Heap |
+| --- | --- | --- | --- | --- |
+| B | MongoDB 조회 | 4,653ms | — | 472MB |
+| D | 응답 DTO 변환 | 13ms | +51MB | 523MB |
+| E1 | CSV 문자열 생성 | 292ms | +191MB | 714MB |
+| E2 | CSV 바이트 변환 및 버퍼 적재 | 118ms | +89MB | 803MB |
+| Z1 | ZIP 입력용 바이트 복사 | 17ms | +24MB | 850MB |
+| Z2 | ZIP 압축 및 close | 828ms | +12MB | 862MB |
+| Z3 | ZIP 응답 바이트 추출 | — | +4MB | 866MB |
+| **TOTAL** | — | 5,943ms | +394MB | **866MB** |
+
+<p className="table-caption">[표] 로그별 측정 결과</p>
 
 ### 2.4 두가지 발견
 
@@ -145,9 +157,14 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
 
 4,300건 측정의 피크 866MB를 기준선으로 잡고, 컨테이너 메모리별 위험도를 추정하면 다음과 같습니다.
 
-<Figure src="/posts/ttlb-ttfb-download-api-bottleneck/10.png" alt="[표] 데이텨 규모별 위험도 측정표" width={1030} height={362}>
-  [표] 데이텨 규모별 위험도 측정표
-</Figure>
+| 컨테이너 메모리 | JVM 힙 (70%) | 4,376건 점유율 | 추정 |
+| --- | --- | --- | --- |
+| 1 GB | 700 MB | \~123% | OOM 거의 확실 |
+| 2 GB | 1.4 GB | \~62% | 데이터 2배면 OOM |
+| **4 GB (고객사)** | **2.8 GB** | **\~31%** | **데이터 3\~4배면 OOM** |
+| 8 GB | 5.6 GB | \~15% | 6\~7배까지 견딤 |
+
+<p className="table-caption">[표] 데이텨 규모별 위험도 측정표</p>
 
 4,300건은 약 2일치 채팅로그 수이며, 최대치는 3개월로 제한되어 있습니다. 어림잡아 18만 건으로 이번 측정치의 45배 수준입니다. 4GB 컨테이너 한도(2.8GB)를 한참 넘는 규모였습니다.
 

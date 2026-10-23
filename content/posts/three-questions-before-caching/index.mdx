@@ -64,9 +64,13 @@ memberCountMs가 334ms → 105ms, 1/3로 줄었습니다. 캐시를 한 줄도 �
 
 <Figure src="/posts/three-questions-before-caching/04.png" alt="" width={2048} height={414} />
 
-<Figure src="/posts/three-questions-before-caching/05.png" alt="[그림 3] $in 제거 후 구간별 로그" width={758} height={302}>
-  [그림 3] $in 제거 후 구간별 로그
-</Figure>
+| 구간 | $in 포함 (전) | $in 제거 (후) |
+| --- | --- | --- |
+| totalMs | 624 | 401 |
+| getAllMs | 269 | 267 |
+| memberCountMs | **334** | **105** |
+
+<p className="table-caption">[그림 3] $in 제거 후 구간별 로그</p>
 
 이 선행 작업은 캐시 도입에도 긍정적인 역할을 합니다. cold 상태의 조회 비용 자체가 싸지면서, 캐시 설계에서 감수할 수 있는 범위가 넓어지는 것이죠.
 
@@ -84,7 +88,11 @@ memberCountMs가 334ms → 105ms, 1/3로 줄었습니다. 캐시를 한 줄도 �
 
 그러면 낭비의 총량을 재볼 수 있습니다. 락 없이 벌어질 수 있는 최악은 “인스턴스 수 × cold 순간의 중복 조회 몇 번”입니다. 그 조회 한 번의 비용은 질문 1에서 약 400ms 수준(그룹 10,000개 기준)으로 낮춰놨고, evict는 관리자가 그룹을 생성/수정/삭제할 때만 일어나니 cold 자체가 드뭅니다. 이 정도 낭비를 없애자고 락 타임아웃과 스핀 대기라는 복잡도, 그리고 새로운 장애점을 사는 것은 손해라고 판단했습니다.
 
-<Figure src="/posts/three-questions-before-caching/06.png" alt="" width={1152} height={332} />
+| 구분 | 로컬 single-flight<br />`@Cacheable(sync=true)` | Redisson 분산락 |
+| --- | --- | --- |
+| 보호 범위 | 인스턴스 내 | 클러스터 전역 |
+| 복잡도 | 애너테이션 1줄 | 락 획득/해제/타임아웃/스핀 대기 |
+| 실패했을 때 | 인스턴스당 조회 몇 번 낭비 | 락 경합·장애 시 지연과 장애점 추가 |
 
 따라서 로컬 single-flight를 선택했습니다. 분산락이 나쁜 도구여서가 아니라, 이 문제에 정합성 수준의 보장이 필요하지 않았기 때문입니다. 막으려는 대상이 무엇인지 따져보지 않았다면 “동시 요청이 있고 인스턴스가 여러 대니까”라는 이유만으로 정합성용 도구를 가져왔을 테고, 얻는 것 없이 복잡도만 늘었을 겁니다.
 

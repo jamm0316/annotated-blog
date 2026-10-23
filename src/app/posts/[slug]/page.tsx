@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { EndMark } from '@/components/EndMark';
+import { NextNav } from '@/components/NextNav';
 import { ReadingRuler } from '@/components/ReadingRuler';
 import { formatDate, getNeighbours, getPost, getPosts } from '@/lib/posts';
 
@@ -60,23 +61,20 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
           <div className="prose" data-prose>
             <Body />
           </div>
-          <p className="mono article__end">
-            <span aria-hidden />끝
-          </p>
+          <EndMark />
         </article>
       </div>
 
       {neighbours.length > 0 && (
-        <nav className="next-nav" aria-label="이어서 읽을 글">
-          <div className="next-nav__inner">
-            {neighbours.map(({ post: p, reason }) => (
-              <Link key={p.slug} href={`/posts/${p.slug}`} className="next-nav__item">
-                <span className="mono">▸ {reason}</span>
-                <span className="next-nav__title">{p.title}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
+        <NextNav
+          items={neighbours.map(({ post: p, reason }) => ({
+            slug: p.slug,
+            title: p.title,
+            description: p.description,
+            date: formatDate(p.date),
+            reason,
+          }))}
+        />
       )}
     </>
   );

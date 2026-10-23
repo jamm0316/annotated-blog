@@ -21,6 +21,18 @@
   --dur-fast: 200ms;
   --dur-slow: 640ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* 코드 색. 남색 농도와 모래색의 짙은 단계만 쓴다. */
+  --code-foreground: var(--ink);
+  --code-token-keyword: var(--navy);
+  --code-token-function: #2c4a94;
+  --code-token-string: #7a5641;
+  --code-token-string-expression: #7a5641;
+  --code-token-constant: #7a5641;
+  --code-token-parameter: var(--ink);
+  --code-token-punctuation: var(--ink-70);
+  --code-token-comment: var(--ink-70);
+  --code-token-link: var(--ink);
 }
 
 :root[data-theme='dark'] {
@@ -30,6 +42,12 @@
   --line: rgb(220 198 184 / 0.16);
   --grid: rgb(220 198 184 / 0.08);
   --grid-fine: rgb(220 198 184 / 0.04);
+
+  --code-token-keyword: #ffffff;
+  --code-token-function: var(--beige);
+  --code-token-string: #c99f84;
+  --code-token-string-expression: #c99f84;
+  --code-token-constant: #c99f84;
 }
 
 * {
@@ -318,17 +336,35 @@ a {
   font-size: 12px;
   color: var(--ink-70);
 }
-.article__end {
+/* 본문 끝: 점이 가로선으로 늘어나며 '끝'을 끝까지 밀고 간다 */
+.end-mark {
   display: flex;
   align-items: center;
   gap: 12px;
   margin: 64px 0 0;
   font-size: 12px;
 }
-.article__end span {
-  flex: 1 1 auto;
-  height: 1px;
+.end-mark__line {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background-color: var(--ink);
+  transition:
+    height var(--dur-fast) ease-out,
+    border-radius var(--dur-fast) ease-out,
+    width 900ms var(--ease-out) var(--dur-fast);
+}
+.end-mark__word {
+  opacity: 0;
+  transition: opacity var(--dur-fast) ease-out 1000ms;
+}
+.end-mark.is-drawn .end-mark__line {
+  width: calc(100% - 28px);
+  height: 1px;
+  border-radius: 0;
+}
+.end-mark.is-drawn .end-mark__word {
+  opacity: 1;
 }
 
 /* 눈금자 */
@@ -384,6 +420,22 @@ a {
   width: 16px;
   background-color: var(--ink);
 }
+.ruler__dot {
+  position: absolute;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--ink);
+  transform: translateY(-50%);
+  transition:
+    opacity var(--dur-fast) ease-out,
+    transform var(--dur-fast) ease-out;
+}
+.ruler__dot.is-done {
+  opacity: 0;
+  transform: translateY(-50%) scale(0);
+}
 .ruler__tick.is-active .ruler__label {
   opacity: 1;
   transform: none;
@@ -406,11 +458,55 @@ a {
   line-height: 1.6;
   margin: 40px 0 12px;
 }
+/* 코드 블록은 테마와 상관없이 늘 남색 바탕에 밝은 글자로 둔다. 본문 속에서 눈에 띄게 하려는 것이다. */
+.code {
+  --ink: var(--sand);
+  --ink-70: rgb(220 198 184 / 0.7);
+  --line: rgb(220 198 184 / 0.16);
+  --code-foreground: var(--sand);
+  --code-token-keyword: #ffffff;
+  --code-token-function: var(--beige);
+  --code-token-string: #c99f84;
+  --code-token-string-expression: #c99f84;
+  --code-token-constant: #c99f84;
+  --code-token-parameter: var(--sand);
+  --code-token-punctuation: rgb(220 198 184 / 0.7);
+  --code-token-comment: rgb(220 198 184 / 0.7);
+  --code-token-link: var(--sand);
+  color: var(--ink);
+  background-color: var(--navy);
+  border: 1px solid var(--navy);
+  color-scheme: dark;
+}
+/* 다크 모드에서는 바탕보다 한 단계 짙게 하고 테두리로 구분한다 */
+:root[data-theme='dark'] .code {
+  background-color: #0a1c48;
+  border-color: rgb(220 198 184 / 0.4);
+}
+.code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-70);
+}
+.code__bar button {
+  min-height: 36px;
+  padding: 0 16px;
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  cursor: pointer;
+}
 .prose pre {
+  margin: 0;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 14px;
   line-height: 1.75;
-  border: 1px solid var(--ink);
   padding: 20px 16px;
   overflow-x: auto;
 }
@@ -421,11 +517,49 @@ a {
 .prose [data-rehype-pretty-code-figure] {
   margin: 32px 0;
 }
-.prose code[data-theme] span {
-  color: var(--shiki-light);
+.prose :not(pre) > code {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
 }
-:root[data-theme='dark'] .prose code[data-theme] span {
-  color: var(--shiki-dark);
+
+/* 표: 위아래 굵은 선, 머리 행은 고정폭 글꼴 */
+.table-wrap {
+  margin: 32px 0;
+  overflow-x: auto;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.prose th {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-70);
+  text-align: left;
+  border-bottom: 1px solid var(--ink);
+}
+.prose th,
+.prose td {
+  padding: 10px 12px;
+  vertical-align: top;
+}
+.prose th:first-child,
+.prose td:first-child {
+  padding-left: 0;
+}
+.prose td {
+  border-top: 1px solid var(--line);
+}
+.prose .table-caption {
+  margin: -20px 0 32px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ink-70);
 }
 .prose blockquote {
   margin: 24px 0;
@@ -545,29 +679,55 @@ a {
   cursor: default;
 }
 
-/* 이어서 읽을 글 */
+/* 이어서 읽을 글. 절반 넘게 보이면 본문이 흐려지고 카드가 올라온다. */
+.post-shell {
+  transition:
+    filter var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+:root[data-reading-done] .post-shell {
+  filter: blur(3px);
+  opacity: 0.4;
+}
 .next-nav {
+  /* 카드가 화면 가운데까지 올라올 수 있도록 바닥 여백을 둔다 */
+  min-height: 75vh;
   border-top: 1px solid var(--ink);
 }
 .next-nav__inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 48px 24px 96px;
+}
+.next-nav__heading {
+  margin: 0 0 20px;
+  font-size: 12px;
+  color: var(--ink-70);
+}
+.next-nav__list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
 }
 .next-nav__item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 28px 24px 28px 0;
+  gap: 10px;
   text-decoration: none;
+  background-color: var(--bg);
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+.next-nav[data-state='waiting'] .next-nav__item {
+  opacity: 0;
+  transform: translateY(48px);
 }
 .next-nav__item + .next-nav__item {
-  padding-left: 24px;
-  border-left: 1px solid var(--line);
+  transition-delay: 120ms;
 }
-.next-nav__item .mono {
+.next-nav__reason,
+.next-nav__date {
   font-size: 12px;
   color: var(--ink-70);
 }
@@ -578,6 +738,13 @@ a {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 5px;
+}
+.next-nav__desc {
+  font-size: 14px;
+  color: var(--ink-70);
+}
+.next-nav__date {
+  margin-top: auto;
 }
 
 /* 바닥글: 도면 표제란 */
@@ -645,14 +812,9 @@ a {
   .site-nav {
     gap: 12px;
   }
-  .next-nav__inner,
+  .next-nav__list,
   .titleblock {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .next-nav__item + .next-nav__item {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
   }
   .titleblock > div {
     border-right: 1px solid var(--line);
@@ -675,11 +837,28 @@ a {
     animation: none;
   }
   body,
+  .post-shell,
+  .next-nav__item,
+  .end-mark__line,
+  .end-mark__word,
+  .ruler__dot,
   .ruler__tick,
   .ruler__label,
   .playground__acquired,
   .playground__waiting,
   .playground__pool {
     transition: none;
+  }
+  .end-mark__line {
+    width: calc(100% - 28px);
+    height: 1px;
+    border-radius: 0;
+  }
+  .end-mark__word {
+    opacity: 1;
+  }
+  .next-nav[data-state='waiting'] .next-nav__item {
+    opacity: 1;
+    transform: none;
   }
 }

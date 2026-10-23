@@ -26,7 +26,12 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 처음엔 등록 주체는 내부 운영자(admin)이라 신뢰할 수 있지 않은가? 라는 생각이 들었다.
 
-<Figure src="/posts/stored-xss-owasp-sanitizer/02.png" alt="" width={1318} height={366} />
+| 항목 | 현황 | 시사점 |
+| --- | --- | --- |
+| 등록 주체 | 내부 운영자 | 신뢰 가능하나, 외부 스니펫·LLM 생성 코드 붙여넣기는 통제 밖 |
+| 배포 형태 | 온프레미스 고객사 납품 | 사고 시 전 고객사 핫픽스가 느림 |
+| 렌더링 위치 | 고객사 도메인 랜딩 페이지 | 피해가 우리 앱 경계를 넘어감 |
+| 인증 토큰 | 쿠키 방식 | `HttpOnly`여도 세션 라이딩은 가능 |
 
 하지만 admin 계정이 탈취당한다면 실제 악용 가능성이 있다고 생각했다.
 
@@ -87,7 +92,7 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 <strong>둘째, 문자열 삭제는 재조합 문제를 만든다.</strong>
 
-```text
+```html
 <scr<script>ipt>alert(1)</script>
 ```
 
@@ -97,7 +102,7 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 예를들어`img`를 허용하게 되면 `onerror` 속성이 포함된 태그의 경우 이를 걸러내야한다. 즉, 속성이 어디부터 어디까지인지 판단해야 한다.
 
-```text
+```html
 <img src="x" alt="a > b" onerror=alert(1)>
 ```
 
@@ -107,7 +112,7 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 운영자가 안내 문구에 다음과 같이 쓰는 경우
 
-```text
+```html
 <p>이 필드에는 &lt;script&gt; 태그를 쓸 수 없습니다</p>
 ```
 
@@ -133,7 +138,7 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 파싱은 문자 스트림을 토크나이저와 트리 구성기라는 두개의 상태 기계로 통과시키는 알고리즘이다. 어려운 쪽은 트리 구성이었다. 명세는 올바른 HTML만 정의하는 것이 아니라, 깨진 입력에 대해 어떤 트리가 나와야 하는지까지 결정론적으로 규정한다.
 
-```text
+```html
 <b><i>굵고 기울임</b> 기울임만</i>
 <!-- 잘못 교차된 태그를 adoption agency algorithm으로 재구성 -->
 ```
@@ -163,7 +168,13 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 판단 기준은 <strong>“보안 정제가 설계 목적인가”</strong>와 <strong>“우리 데이터를 감당하는가"</strong> 두가지 였다.
 
-<Figure src="/posts/stored-xss-owasp-sanitizer/04.png" alt="" width={1104} height={438} />
+| 구분 | OWASP Sanitizer | jsoup | DOMPurify |
+| --- | --- | --- | --- |
+| 계층 | 서버(Java) | 서버(Java) | 브라우저(JS) |
+| 설계 목적 | **보안 정제 전용** | HTML 파싱·스크래핑 | 보안 정제 전용 |
+| 완전 문서 처리 | 사실상 불가 | 가능 | `WHOLE_DOCUMENT` 옵션 |
+| CSS 속성 검증 | 내장(`CssSchema`) | 없음 | 있음 |
+| 취약점 대응 | 보안 이슈로 취급 | 기능 이슈로 취급 | 보안 이슈로 취급 |
 
 위에 따라 OWASP Java HTML Sanitizer를 선택했다. 이유는 아래와 같았다.
 
@@ -185,7 +196,12 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 리서치 중 우리 계획과 직접 충돌하는 취약점을 발견했다.
 
-<Figure src="/posts/stored-xss-owasp-sanitizer/08.png" alt="" width={1150} height={358} />
+| 항목 | 내용 |
+| --- | --- |
+| CVE | CVE-2025-66021 (CVSS 8.6, High) |
+| 공시 | 2025-11-25 |
+| 조건 | 정책이 `noscript`와 `style`을 허용하고 `style`에 `allowTextIn`을 적용 |
+| 결과 | CSS가 정제되지 않아 정책에 없는 태그가 통과되는 방식의 XSS |
 
 <Figure src="/posts/stored-xss-owasp-sanitizer/09.png" alt="[그림] style에서 취약점 발견 문서(CVE-2025–66021)" width={1600} height={862}>
   [그림] style에서 취약점 발견 문서(<a href="https://github.com/advisories/GHSA-g9gq-3pfx-2gw2">CVE-2025–66021</a>)
@@ -207,11 +223,15 @@ admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이
 
 트레이드 오프의 기준은 “요구사항(CSS 자유도)을 축소하지 않으면서, 실행 가능한 공격만 닫는다" 였다. 따라서 3가지 트레이드 오프를 진행하였다.
 
-<Figure src="/posts/stored-xss-owasp-sanitizer/10.png" alt="" width={1600} height={282} />
+| 트레이드오프 | 결정 | 근거 |
+| --- | --- | --- |
+| `<style>` 요소 vs 인라인 `style`만 | **`<style>` 허용** | `@media`, `@keyframes`, `:hover`는 인라인으로 표현이 불가능하다 |
+| 저장 시점 정제 vs 렌더 시점 정제 | **저장 시점 + 원본 보존** | 렌더 경로가 늘어나도 데이터 자체가 안전하다 |
+| 외부 폰트 `<link>` | **`@import` 안내** | fragment 전용이라 `<head>`를 다루지 못하는 부수 효과. XSS와 무관한 축 |
 
 위와 같은 트레이드오프로 코드를 구현하였다.
 
-```text
+```java
 private static final PolicyFactory POLICY = new HtmlPolicyBuilder()
     .allowElements(
         "div", "span", "section", "header", "footer", "p",
@@ -276,7 +296,7 @@ private static final PolicyFactory POLICY = new HtmlPolicyBuilder()
 
 <Figure src="/posts/stored-xss-owasp-sanitizer/12.gif" alt="" width={588} height={314} />
 
-```text
+```html
 <!-- Before: 공격이 섞인 입력 (발췌) -->
 <script>alert('XSS')</script>
 <div class="pintro" onclick="alert('XSS')">
@@ -295,7 +315,7 @@ private static final PolicyFactory POLICY = new HtmlPolicyBuilder()
 
 `allowUrlProtocols("https")`를 걸었으니 https로 시작하지 않는 주소는 전부 지워질 거라 예상했다. 실측 결과는 달랐다.
 
-```text
+```html
 <img src="https://cdn.example.com/a.png">  <!-- 보존 -->
 <img src="x">                              <!-- 보존 (예상 밖) -->
 <img src="http://example.com/a.png">       <!-- 제거 -->
@@ -310,7 +330,7 @@ private static final PolicyFactory POLICY = new HtmlPolicyBuilder()
 
 운영자가 안내 문구에 코드를 넣으면 일부가 사라진다는 사실도 이 과정에서 발견했다.
 
-```text
+```html
 <p>List<String> 형태로 반환합니다</p>
 <!-- 저장 후: <p>List 형태로 반환합니다</p> -->
 ```
