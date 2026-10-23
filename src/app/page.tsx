@@ -29,22 +29,43 @@ export default function Home() {
   return (
     <main className="container">
       <section className="hero">
+        <div className="mono hero__sheet">
+          <span>DWG. 000</span>
+          <span>목록</span>
+          <span>축척 1 : 1</span>
+        </div>
         <h1 className="hero__word">Annotated</h1>
-        <p className="hero__tagline">구조를 재고, 읽는 사람의 언어로 설명합니다</p>
+        <div className="dimension">
+          <span className="dimension__tick" aria-hidden />
+          <span className="dimension__line" aria-hidden />
+          <p className="dimension__text">구조를 재고, 읽는 사람의 언어로 설명합니다</p>
+          <span className="dimension__line" aria-hidden />
+          <span className="dimension__tick" aria-hidden />
+        </div>
       </section>
 
-      <section>
-        <h2 className="mono section-head">01 — 기술 노트</h2>
-        <ul className="rows">
-          {notes.map((p) => (
-            <PostRow key={p.slug} post={p} />
-          ))}
-        </ul>
+      <section id="notes">
+        <div className="section-head">
+          <h2 className="mono">01 — 기술 노트</h2>
+          <span className="mono">{notes.length}편</span>
+        </div>
+        {notes.length === 0 ? (
+          <p className="empty">첫 글을 준비하고 있습니다.</p>
+        ) : (
+          <ul className="rows">
+            {notes.map((p) => (
+              <PostRow key={p.slug} post={p} />
+            ))}
+          </ul>
+        )}
       </section>
 
       {books.length > 0 && (
-        <section>
-          <h2 className="mono section-head">02 — 독후감</h2>
+        <section id="books">
+          <div className="section-head">
+            <h2 className="mono">02 — 독후감</h2>
+            <span className="mono">{books.length}편</span>
+          </div>
           <ul className="rows">
             {books.map((p) => (
               <PostRow key={p.slug} post={p} />

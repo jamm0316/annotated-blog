@@ -46,6 +46,20 @@ draft: false
 ---
 ```
 
+## 글 안에서 쓰는 컴포넌트
+
+`src/mdx-components.tsx` 에 등록돼 있어 import 없이 쓴다. 새 컴포넌트는 기존 것으로 안 될 때만 만든다.
+
+| 컴포넌트 | 용도 |
+| --- | --- |
+| `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP |
+| `<LoaderPlayground t r pool caption />` | 동시 로더 수 ≒ T × R 을 독자가 바꿔 보는 그림 (`cache-stampede`) |
+
+- 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
+- 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.
+
+눈금자(▸), 테마 전환, 이어서 읽을 글은 모든 글에 자동으로 붙는다. 글에 따로 넣지 않는다.
+
 ## 문체
 
 - 기술 노트: `tech-blog-evan` 스킬을 먼저 불러온다.

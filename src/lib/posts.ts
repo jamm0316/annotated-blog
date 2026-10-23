@@ -82,6 +82,42 @@ export function getPost(slug: string): PostMeta | null {
   return post.draft && !showDrafts ? null : post;
 }
 
+export type Neighbour = { post: PostMeta; reason: string };
+
+/**
+ * 다 읽고 이어서 볼 글. 같은 연재의 다음·이전 편을 먼저, 그다음 같은 topic 의 가까운 글을 고른다.
+ * series 는 '캐시 · 2/3' 처럼 이름과 순서를 함께 적으므로 ' · ' 앞을 연재 이름으로 본다.
+ */
+export function getNeighbours(slug: string, limit = 2): Neighbour[] {
+  const posts = getPosts();
+  const self = posts.find((p) => p.slug === slug);
+  if (!self) return [];
+
+  const out: Neighbour[] = [];
+  const taken = new Set([slug]);
+  const push = (post: PostMeta | undefined, reason: string) => {
+    if (!post || taken.has(post.slug) || out.length >= limit) return;
+    taken.add(post.slug);
+    out.push({ post, reason });
+  };
+
+  const seriesName = (p: PostMeta) => p.series.split(' · ')[0];
+  if (self.series) {
+    // 연재는 오래된 글부터 읽는 순서다.
+    const series = posts.filter((p) => p.series && seriesName(p) === seriesName(self)).reverse();
+    const i = series.findIndex((p) => p.slug === slug);
+    push(series[i + 1], '같은 연재 · 다음 편');
+    push(series[i - 1], '같은 연재 · 이전 편');
+  }
+  if (self.topic) {
+    const same = posts.filter((p) => p.topic === self.topic);
+    const j = same.findIndex((p) => p.slug === slug);
+    push(same[j + 1], `같은 topic · ${self.topic}`);
+    push(same[j - 1], `같은 topic · ${self.topic}`);
+  }
+  return out;
+}
+
 export function formatDate(date: string): string {
   return date.replaceAll('-', '.');
 }

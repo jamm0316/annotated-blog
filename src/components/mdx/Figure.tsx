@@ -12,7 +12,7 @@ type Props = {
 // 원본은 public/posts 에 두고, 화면에는 next/image 가 폭에 맞춰 줄인 WebP 를 내보낸다.
 export function Figure({ src, alt, width, height, children }: Props) {
   return (
-    <figure className="figure">
+    <figure className="figure frame">
       <Image
         src={src}
         alt={alt}
