@@ -12,8 +12,6 @@
   --grid: rgb(16 42 104 / 0.08);
   --grid-fine: rgb(16 42 104 / 0.04);
 
-  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
-
   --prose: 680px;
   --frame: 960px;
 
@@ -78,7 +76,7 @@ body {
     24px 24px,
     24px 24px;
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-serif), serif;
   font-size: 16px;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;

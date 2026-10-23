@@ -3,13 +3,11 @@ import { IBM_Plex_Mono, Noto_Serif_KR } from 'next/font/google';
 import Link from 'next/link';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeToggle } from '@/components/ThemeToggle';
-// 글자 범위별로 쪼갠 파일이라 페이지에 나온 글자 묶음만 받는다.
-import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './globals.css';
 
+// 본문과 제목 모두 명조. 가변 글꼴이라 굵기 하나하나를 따로 받지 않는다.
 const serif = Noto_Serif_KR({
   variable: '--font-serif',
-  weight: ['600', '900'],
   subsets: ['latin'],
   display: 'swap',
 });
