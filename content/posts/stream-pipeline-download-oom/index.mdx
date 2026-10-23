@@ -1,0 +1,203 @@
+---
+title: 'stream 파이프라인 설계 — 다운로드 API OOM을 최적화로 풀어내기'
+description: '지난 글에서 TTLB/TTFB와 구간 로깅으로 다운로드 API의 두 가지 병목을 확인했습니다.'
+category: 'note'
+topic: '다운로드 API'
+series: '다운로드 API · 2/2'
+badge: ''
+date: 2026-05-18
+tags: []
+draft: false
+---
+
+<Figure src="/posts/stream-pipeline-download-oom/01.png" alt="" width={1376} height={768} />
+
+지난 글에서 [TTLB/TTFB와 구간 로깅으로 다운로드 API의 두 가지 병목을 확인](https://medium.com/%40evanbackeng/%EC%84%B1%EB%8A%A5-%EC%B8%A1%EC%A0%95%EC%9D%98-%EA%B8%B0%EB%B3%B8%EA%B8%B0-ttlb-ttfb%EC%99%80-%EA%B5%AC%EA%B0%84-%EB%A1%9C%EA%B9%85%EC%9C%BC%EB%A1%9C-%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C-api-%EB%B3%91%EB%AA%A9-%EC%B6%94%EC%A0%81%ED%95%98%EA%B8%B0-ccc8ec608263)했습니다.
+
+- Mongo aggregation의 비효율 — 4,300건 조회에 4,653ms (전체의 78%)
+- CSV → ZIP 변환 파이프라인의 다중 복사 — 같은 데이터가 7번 복제되며 입력 23.5MB가 866MB까지 부풀어 OOM
+
+이번 글에서는 이 두 진단을 어떻게 풀어냈는지, 그리고 결과를 같은 도구로 재측정한 내용을 정리합니다.
+
+채팅 로그 데이터는 시간이 갈수록 양이 늘어납니다. 컨테이너 메모리를 늘리는 수직 확장은 결국 한계에 부딪힐 수밖에 없어서, 처음부터 <strong>JVM heap peak가 데이터 규모와 무관하게 일정하게 유지되는 구조</strong>가 필요했습니다.
+
+<strong>이 글에서 다루는 것</strong>
+
+- `$lookup` subpipeline을 batch flush로 전환한 이유
+- Mongo cursor부터 `StreamingResponseBody`까지 흐름을 끊지 않는 파이프라인 설계
+- buffer 크기를 2,000건으로 잡은 근거
+- 4,300건과 18만 건에서 재측정한 결과
+
+<strong>다루지 않는 것</strong>
+
+- 비동기 처리 + 외부 스토리지 같은 대규모 확장 — 4장 끝에서 짧게만 언급합니다.
+
+## 1. 쿼리 최적화 — `$lookup` subpipeline을 batch flush로
+
+### 1.1 문제: `$lookup`이 streaming의 흐름을 막는다
+
+기존 aggregation pipeline은 다음과 같았습니다.
+
+<Figure src="/posts/stream-pipeline-download-oom/02.png" alt="[그림] 쿼리 최적화 전 기본 구조" width={1604} height={1000}>
+  [그림] 쿼리 최적화 전 기본 구조
+</Figure>
+
+`$lookup`은 외관상 1개의 쿼리이지만, 내부적으로 doc마다 subpipeline을 1회씩 실행합니다. 4,300건이면 subpipeline이 4,300회 실행되는 셈입니다. 이게 Mongo 단계가 4,653ms를 잡아먹은 직접적인 원인입니다.
+
+더 큰 문제는 stream 파이프라인과 충돌한다는 점입니다. cursor가 한 건 한 건 흘러가는 동안 매번 멈춰 subpipeline을 실행해야 하므로, ‘데이터가 흘러간다’는 streaming의 본질이 깨집니다.
+
+### 1.2 batch flush로 전환
+
+해결 방향은 단순합니다. <strong>Mongo가 doc마다 하던 일을 Java가 batch 단위로 모아서 하도록 옮기면 됩니다.</strong>
+
+<Figure src="/posts/stream-pipeline-download-oom/03.png" alt="[그림] 쿼리 최적화 후 개선 구조" width={1464} height={1074}>
+  [그림] 쿼리 최적화 후 개선 구조
+</Figure>
+
+doc 1건마다 subpipeline 1회를 실행하던 구조를, 2,000건마다 단일 `$in` 쿼리 1회로 묶었습니다. 같은 N건 처리 기준으로 쿼리 수는 <strong>N회 → ⌈N/2,000⌉회</strong> 가 됩니다. 4,300건 기준 약 1,400배, 18만 건 기준 약 2,000배 차이가 납니다.
+
+물론 쿼리 한 번이 더 무거워지긴 합니다. 한 번에 2,000건의 chatLogsId로 `$in` 쿼리를 던지니까요. 그래도 쿼리 호출 자체의 고정 비용이 N분의 1로 줄어들기 때문에, 실측에서는 처리속도가 크게 빨라집니다.
+
+<Figure src="/posts/stream-pipeline-download-oom/04.png" alt="[그림] 개선 전후 처리속도 비교" width={1620} height={988}>
+  [그림] 개선 전후 처리속도 비교
+</Figure>
+
+18만 건 호출 기준 처리속도는 4,015 rows/s에서 19,622 rows/s로 늘었습니다. 약 5배 빨라진 셈입니다.
+
+### 정리
+
+`$lookup` subpipeline은 외관상 1쿼리이지만 실제로는 doc마다 N회 실행됩니다. batch flush로 옮기면 쿼리 수는 늘어 보이지만 실제 실행 횟수가 N분의 1로 줄어 실측에서 더 빠릅니다.
+
+## 2. Stream 파이프라인 — DB부터 응답까지 흐름 끊지 않기
+
+### 2.1 왜 끝까지 stream이어야 하는가
+
+streaming의 본질은 <strong>“전체를 한 번에 메모리에 모으지 않는 것”</strong> 입니다. 이 원칙을 깨지 않으려면 Mongo부터 클라이언트까지 모든 단계가 흐름을 끊지 않아야 합니다.
+
+처음 떠올린 가장 단순한 해결책은 “`ZipOutputStream`만 streaming으로 바꾸자"였습니다. 출력단만 바꿔도 ZIP을 메모리에 다 만들어 들고 있는 문제는 해소되니까요. 하지만 그 앞 단계에서 Mongo가 여전히 결과를 List로 통째로 받고 있으면, Part 1에서 측정한 `[B] Mongo search`의 472MB는 그대로 남습니다. `[D] DTO 변환`에서 +51MB가 더 쌓이고, `[E] CSV 문자열 생성`에서 +191MB가 또 쌓이죠. 출력단 메모리만 줄어들 뿐, 피크 메모리는 거의 변하지 않습니다.
+
+<strong>파이프라인 전체에서 가장 큰 buffer가 결국 그 시점의 메모리를 결정합니다.</strong> 따라서 Mongo cursor부터 클라이언트까지 모든 단계가 흐름을 끊지 않아야 합니다.
+
+<Figure src="/posts/stream-pipeline-download-oom/05.png" alt="[그림] stream 파이프라인 — DB 조회부터 응답 전송까지" width={1598} height={886}>
+  [그림] stream 파이프라인 — DB 조회부터 응답 전송까지
+</Figure>
+
+기존 코드는 `ByteArrayOutputStream`에 ZIP을 전부 만든 뒤 `FileNameByteArrayResource`로 한 번에 응답했습니다. Part 1에서 본 7번의 복사가 모두 여기서 발생했죠.
+
+새 코드는 단계마다 List나 String을 만드는 대신, <strong>1건 단위로 흘려보냅니다</strong>. Mongo cursor가 batch 2,000 단위로 데이터를 흘리면, Stream으로 받아 DTO 변환과 CSV 직렬화를 거쳐 `ZipOutputStream`에 곧바로 씁니다. `ZipOutputStream`은 `HttpServletResponse.getOutputStream()`에 직결되어 있고, Spring의 `StreamingResponseBody`가 첫 chunk가 만들어지는 즉시 클라이언트로 흘려보냅니다. Part 1에서 봤던 "Full-buffer 안티패턴"이 해소된 것이죠.
+
+### 2.2 왜 buffer 크기를 2,000건으로 잡았는가
+
+stream을 설계할 때 가장 고민한 부분이 batch buffer 크기였습니다. <strong>너무 작으면 Mongo round-trip이 많아져 처리속도가 떨어지고, 너무 크면 메모리가 부풀어 오릅니다.</strong> 적정선을 찾기 위해 두 가지를 따져봤습니다.
+
+<strong>1. 운영 데이터 규모</strong>
+
+채팅 로그는 사내 측정 기준 약 2,000건 / 일 수준이고, 다운로드 최대치는 3개월 = 약 18만 건으로 제한되어 있습니다. 2,000건 단위로 끊으면 18만 건 호출 시 90회의 batch flush가 일어납니다. 너무 적지도, 너무 많지도 않은 횟수입니다.
+
+<strong>2. buffer가 점유하는 메모리</strong>
+
+batch buffer 한 묶음은 chatLogsId 약 2,000개와 그에 매칭되는 feedback 객체 최대 2,000건입니다. 실측 기준 한 batch가 점유하는 메모리는 약 20MB 수준으로, JVM 힙 한도 2.8GB 안에서 충분히 여유롭습니다.
+
+> <em>두 기준을 종합해 </em><strong><em>2,000건</em></strong><em> 으로 결정했습니다. 18만 건 기준 90회 round-trip은 부담 없는 수준이고, batch당 20MB는 메모리 한도에 여유가 큽니다.</em>
+
+### 정리
+
+OOM의 원인이 다중 복사였다면 해결은 “복사를 막는 것”이 아니라 <strong>“한 번에 모이는 단계를 없애는 것”</strong> 입니다. Mongo cursor부터 `ZipOutputStream`까지 어느 단계도 List나 큰 buffer를 만들지 않도록 끊김 없이 흘려보내야 합니다. buffer 크기는 데이터 규모와 메모리 한도 두 축으로 따져 적정선을 잡았습니다.
+
+---
+
+## 3. 재측정 — 같은 도구로 다시 측정하기
+
+1, 2장에서 두 진단에 대한 해결을 적용했습니다. 이제 Part 1에서 만든 측정 도구(Chrome DevTools Timing, 구간 로깅)로 결과를 검증할 차례입니다.
+
+### 3.1 4,300건
+
+<Figure src="/posts/stream-pipeline-download-oom/06.png" alt="" width={1100} height={366} />
+
+TTFB가 76% 줄었다는 것은 <strong>Full-buffer 안티패턴이 해소되었다</strong>는 의미입니다. 더 이상 서버가 ZIP을 다 만든 뒤에야 응답을 시작하지 않습니다.
+
+Content Download 시간이 늘어난 점이 흥미롭습니다. 절대 시간으로는 늘었지만, 이는 오히려 streaming이 정상 동작한다는 증거입니다. 서버가 첫 byte를 빨리 내보내고 나머지를 흘리는 동안 클라이언트가 함께 받는 구조라서, 클라이언트 입장에서 ‘다운로드 중’이라고 느끼는 시간이 길어진 것입니다.
+
+### 3.2 약 18만 건 (운영 환경 추정 규모)
+
+Part 1에서 운영 환경의 18만 건 호출에서 OOM이 발생할 것이라고 추정했습니다. 이번에는 동일한 규모를 실제로 측정해봤습니다.
+
+<Figure src="/posts/stream-pipeline-download-oom/07.png" alt="[그림] 약 18만 건 호출 시 개선 전후 비교" width={1602} height={892}>
+  [그림] 약 18만 건 호출 시 개선 전후 비교
+</Figure>
+
+<strong>개선 전 (약 17만 건)</strong>
+
+- TTLB <strong>45.14s</strong> / TTFB <strong>44.71s</strong> / Content Download 412.53ms
+- 서버 응답을 받기까지 44.71초 동안 클라이언트는 아무것도 받지 못함
+
+<strong>개선 후 (약 18만 건, 두 차례 측정)</strong>
+
+- 1차: TTLB <strong>14.82s</strong> / TTFB <strong>3.75s</strong> / Content Download 11.06s
+- 2차: TTLB <strong>16.02s</strong> / TTFB <strong>3.56s</strong> / Content Download 12.45s
+
+<Figure src="/posts/stream-pipeline-download-oom/08.png" alt="" width={988} height={234} />
+
+다운로드되는 수준입니다.
+
+### 3.3 데이터 규모가 클수록 효과가 커진 이유
+
+개선 폭이 4,300건에서는 −52%였는데 18만 건에서는 −67%로 더 크게 나타났습니다. <strong>두 해결 방안이 곱셈으로 작용했기 때문</strong>입니다.
+
+- <strong>Stream 파이프라인</strong>의 효과는 데이터 크기와 무관한 고정 이득입니다 (피크 메모리, TTFB)
+- <strong>쿼리 최적화</strong>의 효과는 N에 비례하는 가변 이득입니다 (subpipeline N회 → N/2,000회)
+
+N이 작으면 고정 오버헤드의 비중이 작아 개선 폭도 제한적이지만, N이 커질수록 쿼리 최적화의 효과가 누적되어 개선 비율 자체가 커집니다.
+
+### 3.4 연속 호출 안정성
+
+검증의 마지막 단계는 “OOM이 났던 시스템이 정말 안정화됐는가”였습니다. 두 가지 측면을 확인했습니다.
+
+(1) 데이터 규모를 점진적으로 키워도 메모리가 폭증하지 않는가<br />(2) 대규모 호출을 연속해도 OOM이 발생하지 않는가
+
+두 측면을 함께 보기 위해, 소규모(1,586건)부터 시작해 점진적으로 데이터를 키우고, 마지막에는 18만 건을 연속 4회 호출했습니다.
+
+<Figure src="/posts/stream-pipeline-download-oom/09.png" alt="" width={1942} height={648} />
+
+<strong>점진적 부하 증가 (req-1 \~ req-4)</strong> — 데이터를 1,586건에서 6,607건까지 4배 이상 키웠지만, 피크 메모리는 669MB → 801MB로 약 20% 증가에 그쳤습니다. 데이터에 선형으로 따라 늘어나는 구조가 아니라는 의미입니다.
+
+<strong>대규모 연속 호출 (req-A, req-B, req-5, req-6)</strong> — 18만 건 호출을 연속 4회 진행했고, 모두 OOM 없이 정상 완료되었습니다. 피크 메모리는 최대 1,325MB로 JVM 힙 한도 2.8GB 안에 안정적으로 들어왔고, 순수 증분(peak − start)은 450\~682MB 범위에서 일관적이었습니다.
+
+데이터 규모를 키워도 메모리가 폭증하지 않고, 같은 규모를 반복해도 안정적으로 유지된다는 것을 확인했습니다. <strong>OOM이 나던 시스템이 stream 구조로 안정적으로 전환되었다는 검증</strong>입니다.
+
+### 정리
+
+stream 파이프라인 + 쿼리 최적화 두 축이 곱셈으로 작용해, 데이터 규모가 클수록 개선 효과가 커집니다. 18만 건 기준 TTFB가 44.71s에서 3.75s로 단축되었고, 연속 호출에도 메모리가 안정적으로 유지됩니다.
+
+---
+
+## 4. 정리 — 측정으로 진단하고 측정으로 검증한다
+
+이번 시리즈는 한 가지 사이클을 따라갔습니다.
+
+<strong>진단 → 가설 → 해결 → 검증</strong>
+
+Part 1에서 측정으로 두 가지를 진단했습니다.
+
+- Mongo aggregation의 비효율 (4,653ms, 전체의 78%)
+- CSV → ZIP 다중 복사 (입력 23.5MB → 힙 피크 866MB)
+
+진단이 끝나자 가설은 분명해졌습니다. <strong>“OOM은 메모리가 힙에서 폭증하는 현상이고, 폭증의 원인이 다중 복사라면 한 번에 모이는 단계를 없애야 한다.”</strong> 그래서 stream 파이프라인을 선택했습니다. 출력단만 바꾸는 부분 적용으로는 부족하다는 판단 아래, Mongo cursor부터 클라이언트까지 끊김 없이 흘려보내는 구조를 만들었습니다.
+
+쿼리 비효율에 대한 가설도 분명했습니다. <strong>“</strong>`$lookup`<strong> subpipeline이 doc마다 N회 실행되는 게 문제라면, N번 실행되던 일을 묶어서 N/2,000번으로 줄이면 된다."</strong> batch flush로 옮기면서 buffer 크기는 데이터 규모·메모리를 따져 2,000건으로 결정했습니다.
+
+해결 후에는 Part 1과 같은 측정 도구로 재검증했습니다.
+
+- <strong>4,300건</strong>: TTLB −52%, TTFB −76%, 피크 메모리 −47%
+- <strong>약 18만 건</strong>: TTLB −67%, TTFB −92%, 3개월치 다운로드가 15초 안팎으로 완료
+- <strong>연속 호출</strong>: 4회 모두 JVM 힙 한도 안에서 안정적
+
+진단의 결과가 가설을 만들고, 가설이 해결을 정의하고, 해결의 결과를 다시 측정으로 확인했습니다. 이 사이클은 다운로드 API에만 해당하는 게 아니라, 어떤 성능 이슈에도 적용할 수 있는 사고의 틀이라고 생각합니다.
+
+### 다음 확장 옵션 — 비동기 + 외부 스토리지
+
+지금은 동기 streaming까지 적용한 상태입니다. 데이터 규모가 더 커지거나 ALB idle timeout이 다시 문제가 되는 시점에는 한 단계 더 갈 수 있습니다.
+
+다운로드 요청을 받으면 jobId만 즉시 반환하고, 백그라운드 worker가 MinIO에 `GZIPOutputStream`으로 streaming 저장한 뒤, 사용자가 presigned URL로 별도 다운로드하는 방식입니다. timeout 회피, 재다운로드 지원, GZIP 압축으로 트래픽 절감(텍스트 CSV는 보통 5–10× 압축)이 따라옵니다.
+
+다만 job 큐 / 상태 테이블 / 알림 채널 / TTL 정리 정책까지 들어가야 해서 구현 비용이 크므로, 18만 건이 연속 4회까지 안정적으로 처리되는 현 시점에서는 이관 필요성이 낮다고 판단했습니다.

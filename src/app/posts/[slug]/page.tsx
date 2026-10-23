@@ -28,7 +28,7 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
 
   return (
     <main className="container">
-      <article className="article">
+      <article className="article" lang={post.lang}>
         <header className="article__header">
           <div className="mono article__kicker">
             {post.topic && <span>{post.topic}</span>}

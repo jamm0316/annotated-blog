@@ -1,0 +1,290 @@
+---
+title: 'Zanzibar를 MongoDB에 옮기며 생긴 4가지 설계 판단'
+description: 'Part2. 13개의 튜플을 손에 쥐고, 실제 코드로 만들려 했더니 생긴 일들'
+category: 'note'
+topic: '권한 모델'
+series: 'ReBAC · 2/2'
+badge: ''
+date: 2026-03-10
+tags: []
+draft: false
+---
+
+Part2. 13개의 튜플로 실제 코드로 만들려 했더니 생긴 일들
+
+[<strong><em>“Part1.RBAC의 한계를 넘어 ReBAC으로</em></strong>](https://medium.com/@evanbackeng/rbac의-한계를-넘어-rebac으로-spicedb-poc에서-mongodb-구현까지-ce699ec11f7c)<strong><em>” </em></strong>에서 기존 기존 시스템에 숨어있던 관계를 꺼내 튜플로 정리했습니다.
+
+```plaintext
+group:finance#member@user:evan
+aiagent:bank_agent#chat_access@group:finance#member
+aiagent:bank_agent#admin_access@user:evan
+aiagent:bank_agent#chat_access@user:*
+```
+
+추출은 어렵지 않았습니다. 관계를 식별하고, Zanzibar 문법에 맞춰 적기만 하면 됐죠.
+
+코드로 만드는건 다른 문제였습니다. 튜플은 문법에 맞춰 깔끔하게 정리되었지만, 실제 시스템에 올리는 순간 예상하지 못한 질문들이 하나씩 튀어나왔습니다. 호출부 API는 어떤 모양이어야 하는가, Entity는 어떻게 저장해야 하는가, 컴포넌트는 어디서 나눠야 하는가, 그리고 Zanzibar의 데이터 탐색은 어떻게 구현하는가?
+
+이번 글은 4번의 고민을 순서대로 따라갑니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/01.png" alt="[그림 1] Part 1의 튜플 추출 결과물과 Part 2에서 다룰 네 가지 구현 고민의 흐름" width={1408} height={768}>
+  <strong>[그림 1] Part 1의 튜플 추출 결과물과 Part 2에서 다룰 네 가지 구현 고민의 흐름</strong>
+</Figure>
+
+## 1. 첫 번째 고민: 호출부 API를 어떤 모양으로 만들까
+
+튜플을 추출하고 나서 가장 먼저 든 생각은 이거였습니다. MongoDB aggregate를 직접 쓰면 사용성이 너무 떨어진다. 객체 지향적으로 설계한다면 어떻게 설계할 수 있을까?
+
+### 1.1 Fluent Chain 방식
+
+처음 떠오른 방향은 Fluent Chain이었습니다.
+
+```java
+permission.forUser(10L).chatAccessibleAgentIds()
+permission.forAgent(500L).chatAccessGroupIds()
+```
+
+`forUser()` 뒤에 user 관련 메서드만 자동완성 된다는 점이 매력적이었습니다. 주체 타입이 메서드로 드러나서 읽기도 좋았죠.
+
+하지만 한 가지 걸리는 게 있었습니다. `forUser(groupId)` 같은 id 혼동을 막을 수 없다는 점입니다. `forUser` 가 `Long` 을 받는 이상, user id자리에 group id가 들어가도 컴파일 타임에는 걸러낼 방법이 없습니다. 타입 안정성이라고 생각했던 게 실제로는 없는 거였죠. 그 이점을 위해 `ForUser`, `ForAgent` 클래스를 따로 분리하는 비용을 감수할 이유가 없었습니다.
+
+### 1.2 범용 파라미터 방식
+
+다음으로 생각한 건 범용 파라미터 방식이었습니다.
+
+```java
+permission.accessibleIds(USER, userId, CHAT_ACCESS, AGENT)
+```
+
+구조가 단순하고 메서드 수도 적습니다. 그런데 이 방식은 더 큰 문제가 있었습니다. AiTool처럼 `owner + user + group` 을 복합적으로 확인해야 하는 권한 체크가 생기면, 호출부에서 3번 호출하고 직접 조합해야 합니다. MongoDB에 2번이상 왔다갔다 해야하는 상황이 발생할 수 있었습니다.
+
+### 1.3 명시적 메서드명 방식
+
+팀원들과 토의를 해본 결과 메서드명 자체가 의도를 설명하는 방식으로 방향을 정했습니다.
+
+```java
+permission.chatAccessibleAgentIds(groupIds)
+permission.isAgentAdminByGroups(groupIds, agentId)
+permission.replaceAgentPermissions(agentId, adminGroupIds, chatGroupIds, allowAll)
+```
+
+Zanzibar의 범용성 대신 명확성을 선택했습니다. 메서드명만 보고 어떤 튜플 조회가 일어나는지 바로 알 수 있고, 복합 권한 로직을 내부에 감출 수 있었습니다. 온보딩 비용이 낮고, 호출부가 단순해진다는 장점이 있었습니다. 현재 우리 서비스의 규모에서는 이쪽이 맞다고 판단했습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/02.png" alt="[그림 2] 세 가지 API 설계 방식 비교 — Fluent Chain, 범용 파라미터, 명시적 메서드명" width={1408} height={768}>
+  <strong>[그림 2] 세 가지 API 설계 방식 비교 — Fluent Chain, 범용 파라미터, 명시적 메서드명</strong>
+</Figure>
+
+호출부의 모양은 결정됐습니다. 그런데 메서드 안쪽, MongoDB를 실제 쿼리로 구현하는 단계에서 튜플 저장 구조가 문제가 됐습니다.
+
+## 2. 두 번째 고민: 튜플은 어떤 형태로 저장하지?
+
+### 2.1 Zanzibar 표기 그대로 저장하면?
+
+튜플을 Zanzibar 표기 그대로 MongoDB 문서에 넣으면 이렇게 됩니다.
+
+```text
+{ "subject": "user:100", "relation": "member", "object": "group:10" }
+```
+
+`objectType="group”` 인 튜플만 조회하려면 `"group:10"`문자열에서 파싱해야 합니다. 세 가지 방법을 검토했는데, 결과는 명확했습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/03.png" alt="" width={976} height={298} />
+
+Zanzibar 원본을 확인해보니 내부적으로 namespace(type)와 id를 별도 컬럼으로 저장하고 있었습니다. 같은 이유였죠.
+
+```text
+// Before
+{ "subject": "user:100", "relation": "member", "object": "group:10" }
+
+// After
+{ "subjectType": "USER", "subjectId": 100,
+  "relation": "MEMBER",
+  "objectType": "GROUP", "objectId": 10, "wildcard": false }
+```
+
+type과 id를 나누어 저장하는 형식으로 조회 시점의 복잡도를 없앴습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/04.png" alt="[그림 3] Zanzibar 문자열 표기 vs MongoDB 필드 분리 — 저장 구조 변환 과정" width={1408} height={768}>
+  <strong>[그림 3] Zanzibar 문자열 표기 vs MongoDB 필드 분리 — 저장 구조 변환 과정</strong>
+</Figure>
+
+### 2.2 wildcard는 어떻게 표현할까
+
+필드를 분리하자 파생 문제가 생겼습니다. `allowAllGroupsForChat = true` 에 해당하는 wildcard 튜플의 subject를 어떻게 저장할까? 였습니다.
+
+처음 든 생각은 `subjectType:"*"` 이었습니다. 조회 시 `$in: ["GROUP", "*"]` 으로 처리하면 된다고 생각했습니다.
+
+그런데 type 필드에 실제 타입 (`USER`, `GROUP`)과 메타 기호 `"*"`가 섞이는게 불편했습니다. 나중에 이 필드를 보는 사람이 `"*"` 의 의미를 알 수 있을지 고민스러웠습니다. 코드가 아니라 데이터 자체의 의미가 오염됩니다.
+
+결국 `wildcard: boolean` 전용 필드를 추가했습니다.
+
+```json
+// 일반 튜플
+{ "subjectType": "GROUP", "subjectId": 10, ..., "wildcard": false }
+
+// wildcard 튜플 (모든 사용자에게 공개)
+{ "subjectType": null, "subjectId": null, ..., "wildcard": true }
+```
+
+조회 시 `$or [subject 조건, wildcard=true 조건]` 으로 명확하게 분리됩니다. type필드는 type만 담당하죠.
+
+저장 구조가 잡혔으니 이제 구현으로 넘어갈 차례였습니다. 그런데 구현을 시작하자마자 이 튜플 엔진을 시스템 안에 어떻게 넣을것인가가 문제가 됐습니다.
+
+## 3. 세 번째 고민: 컴포넌트를 어떻게 나눌 것인가?
+
+### 3.1 단일 컴포넌트의 문제
+
+처음엔 권한 조회와 비즈니스 로직을 하나의 컴포넌트에 넣었습니다.
+
+```plaintext
+AiAgentDataAdapter → Authorizer(like Zanzibar) → PermissionTupleRepository
+```
+
+`chatAccessibleAgentIds(userId)`는 내부에서 이렇게 돌았습니다.
+
+```plaintext
+① getGroupIds(userId)        — AuthUserDataAdapter 호출
+② group 기반 chat_access 조회
+③ wildcard 조회
+④ 병합 → agentId 목록 반환
+```
+
+이렇게 구현해 놓고 보니 이것을 어디서 사용할지가 고민 되었습니다. 기존 로직을 살펴보니 권한 체크 로직이 Adapter 계층과 Service 계층에서 혼용되어 구현되어 있었습니다. 따라서 Authorizer는 어떤 계층에서 사용되는 컴포넌트인가 다시한번 고민하게 되었습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/05.png" alt="[그림 4] Authorizer 단일 컴포넌트 구조 — 두 부류의 사용처가 하나의 컴포넌트를 공유하는 문제" width={1408} height={768}>
+  <strong>[그림 4] Authorizer 단일 컴포넌트 구조 — 두 부류의 사용처가 하나의 컴포넌트를 공유하는 문제</strong>
+</Figure>
+
+### 3.2 역할 분리
+
+정리해보면 `Authorizer` 안에 두 가지 역할이 섞여 있었습니다.
+
+`findObjectIds(subjectType, subjectIds, relation, objectType)` 같은 저수준 쿼리, 이건 튜플 엔진의 일입니다. 어떤 조건으로 튜플을 찾고, 저장하고, 삭제하는가. 비즈니스 맥락을 모르는 순수한 CRUD죠.
+
+반면 `chatAccessibleAgentIds(userId)` 는 “이 유저의 그룹을 먼저 찾고, 그 그룹으로 agent를 조회하고, wildcard도 병합하라"는 비즈니스 정책입니다. 어떤 순서로 어떤 튜플을 조합할지 아는건 이 계층의 책임이죠.
+
+쓰이는 곳도 다르고, 변경 이유도 다릅니다. 분리하는 게 자연습럽다고 판단했습니다.
+
+따라서 Authorizer 는 Core로 모듈 내부 구현으로 작성하고 외부에서는 PermissionAdapter 만 참조해 사용하도록 구성하였습니다.
+
+```text
+// Authorizer — 단순 CRUD와 IN 쿼리만 (튜플 엔진)
+@Component
+public class Authorizer {
+    List<Long> findObjectIds(SubjectType, List<Long> subjectIds, Relation, ObjectType);
+    boolean checkAny(SubjectType, List<Long> subjectIds, Relation, ObjectType, Long objectId);
+    List<Long> findWildcardObjectIds(Relation, ObjectType);
+    void saveAll(List<RelationTuple> tuples);
+    void deleteByObject(ObjectType, Long objectId);
+}
+
+// PermissionAdapter — 비즈니스 의미를 가진 메서드 (정책 계층)
+@Component
+public class PermissionAdapter {
+    List<Long> chatAccessibleAgentIds(Set<Long> groupIds);
+    boolean isAgentAdminByGroups(Set<Long> groupIds, Long agentId);
+    void replaceAgentPermissions(Long agentId, Set<Long> adminGroupIds,
+                                 Set<Long> chatGroupIds, boolean allowAll);
+    void addGroupMemberships(Long groupId, Set<Long> userIds);
+    void removeGroupMemberships(List<Long> userIds, Long groupId);
+}
+```
+
+<strong>아키텍처</strong>
+
+```plaintext
+authorizer/
+├── application/
+│   ├── component/
+│   │   └── Authorizer.java         ← 내부 (외부 직접 참조 금지)
+│   └── infra/
+│       └── PermissionAdapter.java  ← 모듈의 유일한 공개 API
+├── entity/
+│   └── RelationTuple.java
+├── enums/
+└── repository/
+```
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/06.png" alt="[그림 5] 컴포넌트 분리 후 구조 — Authorizer(튜플 엔진)와 PermissionAdapter(정책 계층)의 역할 분리" width={1408} height={768}>
+  <strong>[그림 5] 컴포넌트 분리 후 구조 — Authorizer(튜플 엔진)와 PermissionAdapter(정책 계층)의 역할 분리</strong>
+</Figure>
+
+API, Entity, 컴포넌트 구조까지 잡았습니다.
+
+## 4. 네 번째 고민: BFS 탐색이 정말 필요한가
+
+### 4.1 다리 튜플이라는 위화감
+
+컴포넌트 분리를 끝내고 `addGroupMemberships` 를 구현하는데, 설계 고민이 생겼습니다. 그래프 형태의 권한 탐색을 구현하려 했는데 DFS보다느 BFS+Bulk 조회가 효율적이라 판단했습니다. 한 depth씩 한꺼번에 조회하면 DB 호출 횟수를 줄일 수있으니까요.
+
+실제로 어떻게 빠르게 작동하는지 아래에서 시각적으로 확인할 수 있습니다. ([https://claude.ai/public/artifacts/554e7fe7-9500-4c92-9f73-4908d8df1742](https://claude.ai/public/artifacts/554e7fe7-9500-4c92-9f73-4908d8df1742))
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/07.png" alt="" width={2738} height={1396} />
+
+그런데 문제가 있었습니다. 저희가 구현한 BFS는 단일 relation으로 전 depth를 탐색하는 단순화된 버전이었습니다. `relation=CHAT_ACCESS`로 `user→group→agent` 를 탐색하려면, `user→group` 튜플도 `CHAT_ACCESS` 여야 건널 수 있었습니다.
+
+```plaintext
+// user → group, CHAT_ACCESS 로 저장
+```
+
+`user→group` 관계의 본질은 멤버십인데, BFS를 태우기 위해 `CHAT_ACCESS`라는 relation을 억지로 붙여야 했죠. 의미와 데이터가 일치하지 않았습니다.
+
+(참고로 Zanzibar 원본은 userset rewrite 규칙으로 depth마다 relation을 전환할 수 있습니다. 저희 구현은 그 부분을 생략한 단순 버전이었습니다.)
+
+MongoDB에 실제 의미 없는 튜플이 쌓이는 건 기술 부채가 될 거라 판단했습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/08.png" alt="[그림 6] BFS를 위한 다리 튜플 문제 — 멤버십 관계에 CHAT_ACCESS relation이 붙는 위화감" width={1408} height={768}>
+  <strong>[그림 6] BFS를 위한 다리 튜플 문제 — 멤버십 관계에 CHAT_ACCESS relation이 붙는 위화감</strong>
+</Figure>
+
+### 4.2 현재 그룹 구조를 다시 보다
+
+`AuthGroupHierarchyService`를 확인하니 모든 그룹이 `depth=0` self-reference만 있었습니다. 그룹 중첩이 없었죠. `group→agent`도 항상 1-depth입니다.
+
+BFS가 빛을 발하는 건 `group→subgroup→agent`처럼 depth가 깊어질 때입니다. 지금은 항상 `user→group→agent`, 딱 두 단계죠. 이 구조에서 BFS는 단순히 `user→group` 튜플을 한 번 거쳐가는 것밖에 하지 않습니다. 그 "거쳐가기" 하나를 위해 의미 없는 다리 튜플을 DB에 쌓고, 재귀 탐색 로직을 유지하는 건 비용 대비 이점이 없었습니다.
+
+### 4.3 2-phase 단순 조회로 전환
+
+BFS를 제거하고 2-phase 단순 조회로 바꿨습니다.
+
+```plaintext
+Phase 1: userId → groupIds   (MEMBER 조회)       — IN 쿼리 1번
+Phase 2: groupIds → agentIds (CHAT_ACCESS 조회)  — IN 쿼리 1번
+```
+
+DB 쿼리 횟수는 같습니다. 하지만 `user→group` 튜플의 relation이 `MEMBER`로 돌아왔습니다. 그룹 멤버십은 접근 권한과 분리된 개념이고, 이제 데이터도 그 의미를 반영합니다.
+
+```text
+// 멤버십 튜플
+{ "subjectType": "USER", "subjectId": 10,
+  "relation": "MEMBER", "objectType": "GROUP", "objectId": 45 }
+
+// 접근 권한 튜플
+{ "subjectType": "GROUP", "subjectId": 45,
+  "relation": "CHAT_ACCESS", "objectType": "AGENT", "objectId": 1 }
+```
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/09.png" alt="[그림 7] BFS vs 2-phase 단순 조회 — 다리 튜플 제거 전후 비교" width={1408} height={768}>
+  <strong>[그림 7] BFS vs 2-phase 단순 조회 — 다리 튜플 제거 전후 비교</strong>
+</Figure>
+
+나중에 그룹 중첩이 생기면 BFS를 다시 도입하면 됩니다. 하지만 그때도 userset rewrite를 제대로 구현해서, 다리 튜플 없이 `MEMBER→CHAT_ACCESS` 로 relation을 전환하는 방식이어야 할 것입니다. 지금 필요 없는 복잡도를 미리 사는 것보다, 필요할 때 올바른 방식으로 도입하는 편이 낫다고 판단했습니다.
+
+## 5. 마치며
+
+네 번의 고민을 순서대로 따라오면, 각각 다른 문제였지만 결국 <strong>“Zanzibar가 이렇게 하니까”가 아니라, 논문을 분석하며 기술이 해결하려는 문제가 무엇이고 그 것을 “우리 시스템에서는 어떻게 적용 해야 하나.” </strong>라는 질문 앞에 서 있었습니다.
+
+API는 범용 메서드 대신 의도가 드러나는 이름을 선택했고, Entity는 조회가 단순해지도록 저장 시점에 가공했고, 아키텍처는 쓰이는 맥락이 다르면 역할을 나눴고, BFS는 현재 시스템에 맞지 않아 걷어냈습니다.
+
+Part 1에서 암묵적 관계를 명시적 튜플로 끌어올렸다면, Part 2는 그 튜플을 실제 시스템에 올리면서 생긴 마찰들이었습니다. 종이 위의 모델과 동작하는 코드 사이에는 항상 간극이 있고, 그 간극을 메우는 판단 하나하나가 설계였습니다.
+
+<Figure src="/posts/zanzibar-on-mongodb-four-decisions/10.png" alt="[그림 8] Part 1 → Part 2 전체 여정 요약 — 관계 추출에서 프로덕션 구현까지" width={1408} height={768}>
+  <strong>[그림 8] Part 1 → Part 2 전체 여정 요약 — 관계 추출에서 프로덕션 구현까지</strong>
+</Figure>
+
+---
+
+<strong>참고자료</strong>
+
+- [Google Zanzibar 논문](https://research.google/pubs/pub48190/)
+- [SpiceDB 공식 문서](https://authzed.com/docs)

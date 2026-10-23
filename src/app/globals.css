@@ -244,6 +244,24 @@ a {
 .prose [data-rehype-pretty-code-figure] {
   margin: 32px 0;
 }
+.figure {
+  margin: 32px 0;
+}
+.figure figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ink-70);
+}
+.prose blockquote {
+  margin: 24px 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--ink);
+}
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 48px 0;
+}
 .prose code[data-theme] span {
   color: var(--shiki-light);
 }

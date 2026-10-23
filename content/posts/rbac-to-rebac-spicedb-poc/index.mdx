@@ -1,0 +1,332 @@
+---
+title: 'RBAC의 한계를 넘어 ReBAC으로: SpiceDB POC에서 MongoDB 구현까지'
+description: '관계 튜플 모델링과 현실적 기술 선택의 기록'
+category: 'note'
+topic: '권한 모델'
+series: 'ReBAC · 1/2'
+badge: ''
+date: 2026-02-15
+tags: []
+draft: false
+---
+
+## 관계 튜플 모델링과 현실적 기술 선택의 기록
+
+AI 플랫폼에서 권한 관리는 조용하지만 결정적인 역할을 합니다. Agent를 생성하고, Document를 업로드하고, Collection을 공유하는 모든 핵심 기능의 전제 조건이죠. 권한이 제대로 작동하지 않으면 사용자는 자신의 데이터에 접근하지 못하거나, 반대로 남의 데이터가 노출되는 보안 사고로 이어집니다. 그래서 권한 시스템을 건드리는 것은 언제나 조심스러운 일입니다.
+
+저희 팀은 ‘데이터 접근 권한 고도화’ 프로젝트를 진행하며 RBAC(Role-Based Access Control) 시스템을 ReBAC(Relationship-Based Access Control)으로 전환하는 작업을 했습니다. “UserA에게만 AgentB 접근 권한을 주세요”라는 단순한 요청에서 시작된 이 작업은, 결국 권한 로직이 코드 전반에 산재된 구조적 문제를 드러냈습니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/01.png" alt="[그림 1] 서비스마다 제각각 구현된 권한 로직 — 같은 일을 다른 방식으로 하고 있었다" width={1408} height={768}>
+  <strong>[그림 1] 서비스마다 제각각 구현된 권한 로직 — 같은 일을 다른 방식으로 하고 있었다</strong>
+</Figure>
+
+처음에는 Google Zanzibar 기반의 SpiceDB를 도입하려 했습니다. POC까지 성공적으로 마쳤죠. 하지만 팀원들과 논의한 결과, 현재 상황에서는 SpiceDB 운영이 과하다는 결론에 도달했고, MongoDB에 ReBAC 튜플을 직접 저장하는 방식으로 전환했습니다.
+
+이번 글은 <strong>Part 1</strong>으로, SpiceDB POC까지의 여정을 다룹니다. 구체적으로는 다음 내용에 초점을 맞췄습니다.
+
+- <strong>모델 재검토</strong>: 기존 RBAC 시스템이 사실은 이미 관계 기반이었다는 발견
+- <strong>관계 추출</strong>: Entity 필드와 코드 로직에서 숨어있는 관계를 명시화하는 과정
+- <strong>중앙화 검토</strong>: 관계 데이터를 어디에 저장하고 관리할 것인가
+- <strong>SpiceDB POC</strong>: 스키마 설계, Spring Boot 통합, 그리고 기술적 결정
+
+Part 2에서는 이 POC 결과를 바탕으로 <strong>MongoDB에서 ReBAC 튜플을 어떻게 구현하고 권한 데이터를 중앙화했는지</strong> 다룰 예정입니다.
+
+## 1. 왜 권한 모델을 재검토했나
+
+### 1.1 기존 시스템의 한계
+
+기존 시스템은 RBAC + GBAC(Group-Based Access Control) 혼재 구조였습니다. 이 방식은 세 가지 측면에서 명확한 한계를 드러냈습니다.
+
+### 확장성 문제: 직접 권한 부여 불가능
+
+현재 권한 구조는 `User → Group → Resource` 경로를 반드시 거칩니다. 특정 사용자에게 특정 Agent 접근 권한을 부여하려면 별도 그룹을 만들고 해당 사용자를 추가해야 했죠. "UserA에게만 AgentA 접근 허용"이라는 요구사항이 현재 구조에서는 구현 자체가 불가능했습니다.
+
+### 복잡성 문제: 5가지 접근 제어 방식 혼재
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/02.png" alt="" width={1074} height={450} />
+
+### 유지보수 문제: 권한 로직 산재
+
+`GptDocumentService`, `GptCollection`, `AiAgent` 등 각 엔티티마다 동일한 그룹 교집합 연산이 중복 구현되어 있었고, 비즈니스 로직과 권한 로직이 뒤섞여 있었습니다.
+
+```java
+// GptDocumentService.java - anyMatch 방식
+if (!userGroupIds.stream().anyMatch(authGroups::contains)) {
+    throw new PermissionDeniedException();
+}
+
+// AiAgentService.java - disjoint 방식
+if (Collections.disjoint(userGroupIds, agent.getAuthGroups())) {
+    throw new PermissionDeniedException();
+}
+```
+
+같은 “그룹 교집합 확인”을 서비스마다 다른 방식으로 구현하고 있었습니다. AOP도 없어서 모든 서비스 메서드에 권한 로직이 직접 들어가 있었죠.
+
+### 1.2 이미 관계 기반이었다
+
+한계를 분석하면서 흥미로운 사실을 발견했습니다. 우리가 RBAC이라고 부르던 시스템이, 실제로는 <strong>이미 관계 기반으로 동작하고 있었다</strong>는 점입니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/03.png" alt="[그림 2] RBAC이라고 불렀지만, 안을 들여다보니 이미 관계 기반이었다" width={1024} height={1024}>
+  <strong>[그림 2] RBAC이라고 불렀지만, 안을 들여다보니 이미 관계 기반이었다</strong>
+</Figure>
+
+`authGroups` 필드는 "이 그룹이 이 리소스에 접근할 수 있다"는 <strong>관계</strong>였고, `isSysAdminUser` 분기는 "sys\_admin 역할이면 모든 리소스에 접근 가능하다"는 <strong>관계</strong>였습니다. 단지 이 관계들이 Entity 필드, `if`문 분기, 쿼리 필터 등 <strong>코드 곳곳에 흩어져 있을 뿐</strong>이었죠.
+
+문제는 “역할 기반이냐, 관계 기반이냐”가 아니었습니다. 이미 관계로 동작하는 권한 로직이 <strong>명시적 모델 없이 코드에 암묵적으로 존재한다</strong>는 것이 진짜 문제였습니다. 그래서 ReBAC 전환은 “새로운 모델을 도입하는 것”이라기보다, <strong>암묵적 관계를 명시적 모델로 끌어올리는 작업</strong>에 가까웠습니다.
+
+---
+
+## 2. 관계를 어떻게 추출했나
+
+모델 전환의 첫 단계는 현재 시스템에 숨어있는 관계를 찾아내는 것이었습니다. 이 작업은 어떤 저장소를 선택하든 반드시 거쳐야 할 출발점입니다.
+
+### <strong>2.1 Entity 필드 분석</strong>
+
+먼저 도메인 엔티티의 필드를 분석했습니다.
+
+```java
+// AuthUser.java
+private Set<Long> groupIds;   // user → group 관계
+private Set<Long> roleIds;    // user → role 관계
+
+// AiAgent.java
+private Set<Long> adminAccessGroupIds;  // group → agent (edit)
+private Set<Long> chatAccessGroupIds;   // group → agent (access)
+private boolean allowAllGroupsForChat;  // wildcard access
+```
+
+필드 이름만 봐도 관계가 보입니다.
+
+`adminAccessGroupIds`는 "이 그룹에 속한 사용자는 이 Agent를 수정할 수 있다"는 관계이고, `chatAccessGroupIds`는 "이 그룹에 속한 사용자는 이 Agent에 접근할 수 있다"는 관계죠.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/04.png" alt="[다이어그램 1] 현재 Entity들의 연관관계" width={1460} height={1140}>
+  <strong>[다이어그램 1] 현재 Entity들의 연관관계</strong>
+</Figure>
+
+### 2.2 코드 로직에서 관계 추출
+
+하지만 Entity 필드만으로 부족했습니다. <strong>코드에 숨은 관계</strong>도 찾아야 했죠.
+
+```java
+Boolean isSysAdminUser = filters.getAsBoolean(IS_SYSTEM_ADMIN_USER);
+List<Long> groupIds = filters.getAsList(GROUP_IDS, Long.class);
+
+if (Boolean.FALSE.equals(isSysAdminUser) && !groupIds.isEmpty()) {
+    operations.add(Aggregation.match(
+        Criteria.where("adminAccessGroupIds").in(groupIds)
+    ));
+}
+```
+
+이 코드를 읽으면 숨어있는 관계가 드러납니다.
+
+`isSysAdminUser == true`이면 필터 자체를 건너뛰니까, sys\_admin은 모든 Agent를 수정할 수 있다는 뜻입니다. 마찬가지로 `allowAllGroupsForChat == true`는 모든 사용자가 해당 Agent에 접근 가능하다는 wildcard 관계였죠.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/05.png" alt="" width={1068} height={346} />
+
+### 관계 튜플로 변환
+
+코드와 필드에 흩어져 있던 관계를 명시적 튜플로 정리했습니다.
+
+```text
+# 그룹 멤버십
+group:finance#member@user:evan
+
+# Agent 접근 권한 (chatAccessGroupIds에서 추출)
+aiagent:bank_agent#access@group:finance#member
+
+# Agent 수정 권한 (adminAccessGroupIds에서 추출)
+aiagent:bank_agent#edit@group:finance#member
+
+# sys_admin 직접 권한 (isSysAdminUser 분기에서 추출)
+aiagent:bank_agent#edit@platform:global#sys_admin
+
+# wildcard access (allowAllGroupsForChat에서 추출)
+aiagent:bank_agent#access@user:*
+```
+
+이 과정에서 깨달은 것이 있습니다. 관계는 Entity 필드에만 있는 것이 아닙니다. if 문 분기에도, 쿼리 필터 조건에도, “필터를 건너뛰는" 코드에도 관계가 숨어있었습니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/06.png" alt="[다이어그램 2] ReBAC 관계 추출 다이어그램" width={2048} height={1383}>
+  <strong>[다이어그램 2] ReBAC 관계 추출 다이어그램</strong>
+</Figure>
+
+\[다이어그램 1\]의 Entity 연관관계와 비교해 보면 변화가 눈에 들어옵니다. Entity 간의 암묵적 관계가 `member`, `sys_admin`, `access`, `edit` 같은 <strong>명시적 관계 이름</strong>을 갖게 되었고, 특히 user에서 Agent로 가는 경로가 그룹 경유뿐 아니라 <strong>직접 부여 경로</strong>도 표현할 수 있게 되었죠.
+
+### 2.4 relation과 permission 구분
+
+관계를 추출하면서 중요한 개념 구분이 필요했습니다. <strong>저장하는 관계(relation)</strong>와 <strong>계산하는 권한(permission)</strong>의 차이입니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/07.png" alt="" width={1322} height={234} />
+
+예를 들어 `admin_access`는 relation(저장 대상)이고, `edit`은 permission(계산 결과)입니다. `edit` 권한은 세 가지 경로 중 하나만 만족하면 성립합니다.
+
+1. <strong>그룹 경로</strong>: `admin_access` 관계가 있는 그룹의 멤버인 경우
+2. <strong>직접 부여</strong>: 사용자에게 직접 `admin_access` 관계가 있는 경우 ← 요구사항 해결!
+3. <strong>역할 경로</strong>: sys\_admin 역할을 가진 경우
+
+이 구분은 어떤 저장소를 쓰든 동일하게 적용됩니다. SpiceDB에서는 스키마 문법으로, MongoDB에서는 쿼리 로직으로 표현하는 차이만 있을 뿐이죠.
+
+## 3. 관계 데이터를 어디에 저장할 것인가
+
+관계를 명시적 튜플로 추출하고 나니 자연스럽게 다음 질문이 떠올랐습니다. <strong>이 관계 데이터를 어디에 저장하고, 어떻게 조회할 것인가?</strong>
+
+기존에는 관계가 각 Entity 필드와 코드 분기에 흩어져 있었습니다. ReBAC으로 전환한다면 이 관계들을 <strong>한 곳에서 관리</strong>해야 합니다. 즉, 권한 데이터의 중앙화가 필요했죠.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/08.png" alt="[그림 3] 코드 곳곳에 흩어진 관계 데이터 — 중앙화가 필요했다" width={1408} height={768}>
+  <strong>[그림 3] 코드 곳곳에 흩어진 관계 데이터 — 중앙화가 필요했다</strong>
+</Figure>
+
+선택지는 크게 두 가지였습니다.
+
+<strong>직접 구현</strong>: 기존 MongoDB에 관계 튜플 컬렉션을 만들고, 권한 체크 로직을 직접 작성하는 방식입니다. 추가 인프라가 필요 없다는 장점이 있지만, 관계 그래프 탐색이나 permission 계산 로직을 직접 만들어야 합니다.
+
+<strong>전문 오픈소스 활용</strong>: Google Zanzibar 논문을 구현한 오픈소스를 도입하는 방식입니다. 관계 그래프 탐색, permission 계산, 일관성 보장 등을 검증된 엔진에 위임할 수 있지만, 별도 인프라 운영이 필요합니다.
+
+저희는 먼저 오픈소스의 가능성을 검증해보기로 했습니다. 직접 구현이 더 간단할 수 있지만, 검증 없이 “직접 만들자”로 가면 나중에 “전문 도구를 써야 하는 거 아닌가?”라는 의문이 계속 남을 테니까요.
+
+### 3.1 왜 SpiceDB를 선택했나
+
+Zanzibar 구현체 중 SpiceDB를 선택한 이유는 다음과 같았습니다.
+
+- <strong>성숙도</strong>: Zanzibar 오픈소스 구현체 중 가장 활발한 커뮤니티와 문서를 갖추고 있었습니다
+- <strong>스키마 언어</strong>: 앞서 정리한 relation/permission 개념을 그대로 표현할 수 있는 전용 문법을 제공합니다
+- <strong>API 호환성</strong>: CheckPermission(단건 검증), LookupResources(목록 필터링) 등 실제 프로덕션에 필요한 API가 갖춰져 있었습니다
+- <strong>경량 실행</strong>: Docker Compose로 로컬에서 바로 띄울 수 있어 POC 진입 장벽이 낮았습니다스키마 설계와 검증
+
+## 4. SpiceDB POC: 스키마 설계와 Spring Boot 통합
+
+### 4.1 스키마 설계
+
+Docker Compose로 SpiceDB 인스턴스를 띄우고, 2장에서 추출한 관계를 기반으로 스키마를 작성했습니다.
+
+```plaintext
+definition user {}
+
+definition group {
+    relation member: user
+    permission membership = member
+}
+
+definition platform {
+    relation sys_admin: user
+    permission access_all = sys_admin
+}
+
+definition aiagent {
+    relation admin_access: group | user
+    relation chat_access: group | user
+    relation platform_ref: platform
+
+    permission edit =
+        admin_access->membership +        // 그룹 경로
+        admin_access +                    // 직접 부여
+        platform_ref->access_all          // sys_admin 권한
+
+    permission access =
+        chat_access->membership +
+        chat_access +
+        edit                              // edit 있으면 access도 포함
+}
+```
+
+`permission edit`에 3가지 경로가 공존하는 것이 이 스키마의 핵심입니다. 그룹을 통한 간접 권한, 사용자 직접 부여, sys\_admin 역할 기반 권한이 하나의 permission 안에서 합산됩니다. 드디어 "개별 사용자 직접 권한 부여"가 가능해졌죠.
+
+### 4.2 Spring Boot 통합: 두 가지 권한 검증 패턴
+
+SpiceDB의 CheckPermission API(단건 검증)와 LookupResources API(목록 필터링)를 Spring Boot와 연동했습니다.
+
+AOP 기반 단건 검증은 어노테이션 하나로 권한 체크를 처리하는 구조입니다.
+
+```java
+@CheckPermission(resource = "aiagent", permission = "access", resourceIdParam = "agentId")
+@GetMapping("/{agentId}")
+public CommonResponse<?> getAgent(@PathVariable String agentId) {
+    // 권한 체크 로직 없음. AOP가 처리.
+    return aiAgentService.findById(agentId);
+}
+```
+
+비즈니스 로직에서 권한 코드가 완전히 사라졌습니다. 기존에 서비스마다 `anyMatch`, `disjoint` 등으로 제각각 구현하던 코드가 어노테이션 한 줄로 통일된 거죠.
+
+<strong>LookupResources 기반 목록 조회</strong>는 DB 조회 전에 SpiceDB에서 “볼 수 있는 ID 목록”을 먼저 받아오는 방식입니다.
+
+```java
+public List<AiAgentResponse> search(long userId) {
+    // 1. SpiceDB에서 권한 있는 ID 목록 조회
+    List<String> accessibleIds = spiceDbClient.lookupResources(
+        "user", String.valueOf(userId), "aiagent", "access"
+    );
+    if (accessibleIds.isEmpty()) return List.of();
+
+    // 2. 해당 ID들만 DB 조회
+    return aiAgentRepository.findAllById(accessibleIds);
+}
+```
+
+권한 계산은 SpiceDB가, 데이터 조회는 DB가 담당합니다. 역할이 명확하게 분리되었죠.
+
+### 4.3 검증 결과
+
+zed CLI로 테스트용 관계 데이터를 넣고 Postman으로 검증했을 때, 권한을 부여한 3개 Agent만 정확히 반환되었습니다. POC는 성공이었습니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/09.png" alt="" width={1012} height={372} />
+
+## 5. 기술적 결정: SpiceDB에서 MongoDB로
+
+POC 결과를 가지고 팀원들과 본격적인 논의를 시작했습니다. SpiceDB는 기술적으로 잘 동작했지만, <strong>프로덕션에 도입할 것인가</strong>는 별개의 문제였습니다.
+
+### 5.1 SpiceDB 도입을 재고한 이유
+
+논의 과정에서 세 가지 현실적 우려가 나왔습니다.
+
+<strong>운영 부담</strong>: SpiceDB를 별도 Pod로 띄우면 새로운 인프라가 하나 더 생기는 셈입니다. PostgreSQL 백엔드, gRPC 통신, 스키마 마이그레이션까지 관리 포인트가 늘어나죠. 소규모 팀에서 권한 엔진 전용 인프라를 운영하는 것은 부담이 컸습니다.
+
+<strong>작업 범위</strong>: Zanzibar 모델을 전체 시스템에 적용하려면 모든 도메인의 관계를 SpiceDB로 마이그레이션해야 합니다. AiAgent뿐 아니라 Collection, Document, Prompts까지 포함하면 작업 범위가 상당히 커질 수밖에 없었습니다.
+
+<strong>실제 권한 구조의 단순성</strong>: 가장 결정적인 요인이었습니다. 현재 시스템의 주된 권한 체크는 `User → Group → Resource`로 <strong>2 depth</strong>밖에 되지 않았습니다. SpiceDB의 강점인 깊은 관계 그래프 탐색이 크게 필요하지 않은 상황이었죠.
+
+### 5.2 팀의 결론
+
+ReBAC으로 전환하는 기조는 유지하되, SpiceDB 대신 <strong>기존 MongoDB에 관계 튜플을 저장하자</strong>는 것이 팀의 결론이었습니다.
+
+<Figure src="/posts/rbac-to-rebac-spicedb-poc/10.png" alt="[그림 4] 팀의 결론 — 패러다임은 받아들이되, 도구는 현실에 맞게" width={1408} height={768}>
+  <strong>[그림 4] 팀의 결론 — 패러다임은 받아들이되, 도구는 현실에 맞게</strong>
+</Figure>
+
+첫째, 이미 MongoDB를 주 데이터 저장소로 쓰고 있으니 별도 인프라가 필요 없습니다. 둘째, 2 depth 수준의 관계 탐색은 MongoDB 쿼리로 충분히 처리할 수 있습니다. 셋째, ReBAC의 핵심 가치인 “관계 기반 권한 모델”은 저장소와 무관하게 적용 가능합니다.
+
+Zanzibar의 튜플 형식은 차용하되, SpiceDB라는 전문 엔진까지는 도입하지 않기로 한 거죠. 패러다임 전환과 데이터 중앙화는 받아들이되, 도구 선택은 현재 팀의 규모와 요구사항에 맞추는 현실적 판단이었습니다.
+
+## 6. 마치며
+
+이번 ReBAC 전환 프로젝트의 Part 1을 돌아보며, 크게 세 가지를 배웠습니다.
+
+### 관계는 이미 존재했다
+
+RBAC이라고 부르던 시스템을 들여다보니, Entity 필드에도 `if`문 분기에도 쿼리 필터에도 이미 관계가 존재했습니다. ReBAC 전환은 새로운 것을 만드는 게 아니라, <strong>암묵적 관계를 명시적 모델로 끌어올리는 작업</strong>이었습니다. 이 인식이 있어야 "무엇을 마이그레이션해야 하는가"가 명확해집니다.
+
+### POC의 진짜 가치는 판단 근거
+
+SpiceDB POC는 실패가 아니었습니다. relation과 permission의 구분, 관계 그래프 기반 권한 계산, AOP 통합 패턴 등 <strong>ReBAC의 핵심 개념을 직접 체험</strong>했고, 동시에 “현재 우리 시스템에는 과하다”는 <strong>현실적 판단 근거</strong>도 얻었습니다. POC 없이 처음부터 MongoDB로 갔다면 “SpiceDB 같은 오픈소스 도구를 써야 하는 거 아닌가?”라는 의문이 계속 남았을 겁니다.
+
+### YAGNI
+
+YAGNI(You Aren’t Gonna Need It) 원칙을 되새기게 된 경험이기도 합니다. 실제 필요 이상으로 미래의 요구사항을 예측하여 과도한 설계를 하는 것은, 유지보수 비용과 개발 시간 측면에서 오히려 독이 됩니다. 현재 2 depth 관계 탐색이면 충분한 상황에서 깊은 그래프 탐색 엔진을 도입할 필요는 없었죠.
+
+### 다음: [Part 2. Zanzibar를 MongoDB에 옮기며 생긴 4가지 설계 판단](https://medium.com/@evanbackeng/zanzibar를-mongodb에-옮기며-생긴-4가지-설계-판단-26450451a683)
+
+Part 2에서는 이 결정을 바탕으로 <strong>MongoDB에서 ReBAC 튜플을 어떻게 설계하고, 권한 데이터를 어떻게 중앙화했는지</strong> 다룹니다. SpiceDB POC에서 설계했던 스키마와 AOP 패턴이 MongoDB 환경에서 어떻게 변환되었는지, 그리고 실제 프로덕션 적용 과정에서 마주친 문제들을 공유할 예정입니다.
+
+레거시 권한 시스템 전환을 고민 중이라면, 숨어있는 관계를 먼저 명시화하고, 작은 범위의 POC로 도구를 검증한 뒤, 현재 시스템의 복잡도에 맞는 구현 방식을 선택하시길 권장합니다.
+
+이 글이 같은 고민을 하는 개발자분들께 도움이 되길 바랍니다. 감사합니다.
+
+---
+
+<strong>참고자료</strong>
+
+- [Google Zanzibar 논문](https://research.google/pubs/pub48190/)
+- [SpiceDB 공식 문서](https://authzed.com/docs)
+- [WorkOS — Top 5 Zanzibar Implementations](https://workos.com/blog/top-5-google-zanzibar-open-source-implementations-in-2024)

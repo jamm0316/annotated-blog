@@ -18,6 +18,8 @@ export type PostMeta = {
   /** YYYY-MM-DD */
   date: string;
   tags: string[];
+  /** 본문 언어. 기본 'ko', 영어 글만 'en' */
+  lang: string;
   draft: boolean;
   /** 분 단위 예상 읽기 시간 */
   readingTime: number;
@@ -49,6 +51,7 @@ function readPost(slug: string): PostMeta | null {
     // gray-matter 는 따옴표 없는 날짜를 Date 로 읽는다.
     date: data.date instanceof Date ? data.date.toISOString().slice(0, 10) : String(data.date),
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    lang: String(data.lang ?? 'ko'),
     draft: Boolean(data.draft),
     readingTime: readingTime(content),
   };

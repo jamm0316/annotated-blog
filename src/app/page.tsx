@@ -5,9 +5,14 @@ function PostRow({ post }: { post: PostMeta }) {
   return (
     <li>
       <Link href={`/posts/${post.slug}`} className="row">
-        <span className="mono row__topic">{post.topic}</span>
+        <span className="mono row__topic">
+          {post.topic}
+          {post.lang === 'en' && ' · English'}
+        </span>
         <span className="row__main">
-          <span className="row__title">{post.title}</span>
+          <span className="row__title" lang={post.lang}>
+            {post.title}
+          </span>
           {post.series && <span className="mono row__series">▸ {post.series}</span>}
         </span>
         <span>{post.badge && <span className="mono badge">{post.badge}</span>}</span>
