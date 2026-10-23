@@ -1,0 +1,29 @@
+---
+title: '[견본] 글 작성 형식'
+description: 'frontmatter 와 본문 요소가 화면에 어떻게 나오는지 확인하는 견본 글. 운영에는 노출되지 않는다.'
+category: 'note'
+topic: '블로그'
+series: ''
+badge: ''
+date: 2026-10-23
+tags: ['MDX', '견본']
+draft: true
+---
+
+이 글은 `draft: true` 라서 로컬과 Vercel 미리보기에서만 보인다.
+
+## 소제목
+
+본문 문단. 표와 코드 블록이 제대로 그려지는지 본다.
+
+| 항목 | 값 |
+| ---- | -- |
+| 본문 대비 | 10.97 : 1 |
+| 보조 글자 대비 | 4.88 : 1 |
+
+```java
+@Bean
+public CacheManager cacheManager(RedisConnectionFactory factory) {
+    return RedisCacheManager.builder(factory).build();
+}
+```
