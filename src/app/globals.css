@@ -393,6 +393,10 @@ button:active:not(:disabled) {
 .row__ghost {
   visibility: hidden;
 }
+/* 본문에서 그대로 옮긴 인용은 한 단 밝게 둬 요약과 구분한다 */
+.row__quote {
+  color: var(--ink);
+}
 .row__typed {
   position: absolute;
   inset: 0;

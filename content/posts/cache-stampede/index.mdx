@@ -1,6 +1,8 @@
 ---
 title: 'cache stampede — 캐시미스가 연속적으로 발생한다면?'
 description: '이전 글에서 cache evict의 책임을 어디에 둘 것인가를 정리했다. 서비스 계층에 있던 evict 선언을 DB 쓰기가 실제로 일어나는 dataAdapter로 옮겨 누락 가능이 구조적으로 사라졌다.'
+summary: 'evict 직후 동시 로더가 약 263개(추정)로 커넥션 풀 100을 넘을 수 있어 locking 캐시 라이터로 Redis 분산락 single-flight를 걸었다. 같은 락이 중복 읽기와 중복 쓰기를 함께 줄였다.'
+hook: 'Redis는 락을 대신 걸어주는 것이 아니라, 락을 만들 수 있는 원자적 명령을 제공할 뿐이다.'
 category: 'note'
 topic: '캐시'
 series: '캐시 · 3/3'

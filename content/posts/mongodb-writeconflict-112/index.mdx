@@ -1,6 +1,8 @@
 ---
 title: 'MongoDB WriteConflict(112) 발생 원인과 해결'
 description: '고객사 운영 환경의 알람에서 MongoDB WriteConflict(error 112)가 리포트됐습니다. 발생 지점은 매일 새벽 1시에 도는 만료 파일 삭제 배치였습니다.'
+summary: 'WriteConflict(112)는 트랜잭션 안의 쓰기라 서버가 재시도하지 않고 던진 것이었다. 단일 쓰기뿐인 멱등 배치에서 @Transactional을 지워 해결했다.'
+hook: '결론부터 적으면, 해결은 메서드에서 @Transactional 한 줄을 지운 것이었습니다.'
 category: 'note'
 topic: 'MongoDB'
 series: ''

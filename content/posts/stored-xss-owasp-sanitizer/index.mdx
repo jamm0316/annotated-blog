@@ -1,6 +1,8 @@
 ---
 title: 'Stored XSS 대응, 라이브러리를 고른 이유 — OWASP Java HTML Sanitizer 도입기'
 description: 'admin이 HTML을 이용해 자유롭게 페이지를 꾸밀 수 있는 기능이 있다. 이 기능은 “무검증 HTML 저장, 렌더링”이라는 전형적인 Stored XSS 보안 문제를 내포하고 있었다.'
+summary: '실사용 데이터 전수 조사로 허용 목록을 정하고, 파싱은 직접 만들지 않고 OWASP Java HTML Sanitizer에 맡겼다. CVE-2025-66021은 패치 버전 사용과 noscript 배제로 막았다.'
+hook: '변형은 무한히 만들 수 있고, 블랙리스트는 그 무한을 따라잡을 수 없다.'
 category: 'note'
 topic: '입력 정제'
 series: ''

@@ -23,7 +23,11 @@ export type PostMeta = {
   draft: boolean;
   /** 분 단위 예상 읽기 시간 */
   readingTime: number;
-  /** 목록 미리보기에 타이핑되는 본문 앞부분. 마크다운·태그를 걷어낸 평문 */
+  /** 목록 미리보기에 타이핑되는 요약. 에이전트가 본문을 읽고 쓴 핵심 1~2문장 */
+  summary: string;
+  /** 요약 뒤에 따옴표로 감싸 붙는 본문 인용. 본문 문장을 그대로 옮긴다 */
+  hook: string;
+  /** summary 가 없을 때 대신 타이핑되는 본문 앞부분. 마크다운·태그를 걷어낸 평문 */
   excerpt: string;
 };
 
@@ -86,6 +90,8 @@ function readPost(slug: string): PostMeta | null {
     lang: String(data.lang ?? 'ko'),
     draft: Boolean(data.draft),
     readingTime: readingTime(content),
+    summary: String(data.summary ?? ''),
+    hook: String(data.hook ?? ''),
     excerpt: excerpt(content),
   };
 }

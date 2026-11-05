@@ -1,6 +1,8 @@
 ---
 title: '캐시 운영 시 고려해야할 2가지 — Cache Evict는 누구의 책임인가?'
 description: '이전 글에서 캐시를 붙이기 전에 고려해야할 3가지 질문에 대해 정리했다. 그 기준으로 그룹 트리 조회 API에 Redis 캐시를 붙였고, 응답 시간을 376ms에서 101ms로 줄였다.'
+summary: 'Cache Evict를 서비스에서 실제 쓰기가 일어나는 DataAdapter로 옮겨, 팀원의 기억이 아니라 설계로 무효화를 강제했다. allEntries 대신 단건 키를 지정해 O(N) 삭제를 O(1)로 바꿨다.'
+hook: '기억에 의존하는 정책보다 설계가 강제할 수 있는 정책이 더 견고하다.'
 category: 'note'
 topic: '캐시'
 series: '캐시 · 2/3'

@@ -13,6 +13,8 @@ export type BrowserPost = {
   badge: string;
   date: string;
   lang: string;
+  summary: string;
+  hook: string;
   excerpt: string;
 };
 
@@ -108,13 +110,16 @@ export function PostBrowser({ posts }: { posts: BrowserPost[] }) {
 
 const formatDate = (date: string) => date.replaceAll('-', '.');
 
-// 손을 올리면 행이 살짝 펼쳐지고, 본문 앞부분이 AI 가 쓰듯 몇 글자씩 타이핑된다. 끝에 '… 더보기'.
+// 손을 올리면 행이 살짝 펼쳐지고, 요약과 본문 인용("…")이 AI 가 쓰듯 몇 글자씩 타이핑된다. 끝에 '… 더보기'.
+// 요약이 없는 글은 본문 앞부분을 대신 쓴다.
 // 마우스로 지나가기만 할 때 깜빡이지 않도록 잠깐 머문 뒤에 연다. 터치에서는 열지 않는다(누르면 바로 글로 간다).
 function PostRow({ post, index }: { post: BrowserPost; index: number }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState(0);
   const intent = useRef<number | undefined>(undefined);
-  const text = post.excerpt;
+  const lead = post.summary || post.excerpt;
+  const quote = post.summary && post.hook ? ` “${post.hook}”` : '';
+  const text = lead + quote;
 
   useEffect(() => {
     if (!open || !text) return;
@@ -169,10 +174,12 @@ function PostRow({ post, index }: { post: BrowserPost; index: number }) {
                 <span className="row__preview-text" lang={post.lang}>
                   {/* 다 쓴 높이를 미리 잡아 두어 타이핑하는 동안 행 높이가 흔들리지 않게 한다 */}
                   <span className="row__ghost">
-                    {text}… 더보기
+                    {lead}
+                    <span className="row__quote">{quote}</span>… 더보기
                   </span>
                   <span className="row__typed">
-                    {text.slice(0, typed)}
+                    {lead.slice(0, typed)}
+                    {typed > lead.length && <span className="row__quote">{quote.slice(0, typed - lead.length)}</span>}
                     {done ? (
                       <span className="row__more">
                         … <span className="row__more-link">더보기</span>
