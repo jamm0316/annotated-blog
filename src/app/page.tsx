@@ -4,11 +4,12 @@ import { getPosts } from '@/lib/posts';
 
 export default function Home() {
   // 목록에 필요한 필드만 클라이언트로 넘긴다
-  const posts = getPosts().map(({ slug, title, category, topic, series, badge, date, lang, summary, hook, excerpt }) => ({
+  const posts = getPosts().map(({ slug, title, category, topic, areas, series, badge, date, lang, summary, hook, excerpt }) => ({
     slug,
     title,
     category,
     topic,
+    areas,
     series,
     badge,
     date,

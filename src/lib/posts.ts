@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { AREAS, type Area } from './areas';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'posts');
 
@@ -12,6 +13,8 @@ export type PostMeta = {
   description: string;
   category: Category;
   topic: string;
+  /** 기술 노트 2단계 칩. JD 역량 이름(src/lib/areas.ts). 한 글이 여럿에 들 수 있다 */
+  areas: Area[];
   series: string;
   /** 목록에 붙는 핵심 수치. 예: `TTFB −96%` */
   badge: string;
@@ -82,6 +85,10 @@ function readPost(slug: string): PostMeta | null {
     description: String(data.description ?? ''),
     category: data.category === 'book' ? 'book' : 'note',
     topic: String(data.topic ?? ''),
+    areas: (Array.isArray(data.area) ? data.area.map(String) : []).filter((a: string): a is Area => {
+      if ((AREAS as readonly string[]).includes(a)) return true;
+      throw new Error(`[posts] ${slug}/index.mdx 의 area '${a}' 는 src/lib/areas.ts 에 없다.`);
+    }),
     series: String(data.series ?? ''),
     badge: String(data.badge ?? ''),
     // gray-matter 는 따옴표 없는 날짜를 Date 로 읽는다.

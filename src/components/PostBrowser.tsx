@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type PointerEvent } from 'react';
+import { AREAS } from '@/lib/areas';
 import type { LabItem } from '@/lib/lab';
 import { LabGrid } from './LabGrid';
 import { LiquidTabs, type TabItem } from './LiquidTabs';
@@ -11,6 +12,7 @@ export type BrowserPost = {
   title: string;
   category: 'note' | 'book';
   topic: string;
+  areas: string[];
   series: string;
   badge: string;
   date: string;
@@ -64,6 +66,16 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   );
 
   const subItems = useMemo<TabItem[]>(() => {
+    // 기술 노트는 JD 역량 이름으로, 정해 둔 순서대로 묶는다. 한 글이 여러 칩에 들 수 있다.
+    if (shown === 'note') {
+      const notes = posts.filter((p) => p.category === 'note');
+      return [
+        { value: '', label: '전체', count: notes.length },
+        ...AREAS.map((a) => ({ value: a, label: a, count: notes.filter((p) => p.areas.includes(a)).length })).filter(
+          (a) => a.count > 0,
+        ),
+      ];
+    }
     const inCategory = shown === 'lab' ? lab.map((l) => l.kind) : posts.filter((p) => p.category === shown).map((p) => p.topic);
     const counts = new Map<string, number>();
     inCategory.forEach((t) => t && counts.set(t, (counts.get(t) ?? 0) + 1));
@@ -75,7 +87,8 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   }, [posts, lab, shown]);
 
   const labList = lab.filter((l) => !sub || l.kind === sub);
-  const list = posts.filter((p) => (!main || p.category === main) && (!main || !sub || p.topic === sub));
+  const matches = (p: BrowserPost) => (main === 'note' ? p.areas.includes(sub) : p.topic === sub);
+  const list = posts.filter((p) => (!main || p.category === main) && (!main || !sub || matches(p)));
 
   const onMain = (value: string) => {
     const next = value === main ? null : (value as Category);
