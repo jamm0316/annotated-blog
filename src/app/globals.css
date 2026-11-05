@@ -1,4 +1,4 @@
-/* 디자인 토큰. 색은 검정(바탕)·흰 글자·주황(강조) 세 가지뿐이다. 기본은 다크. */
+/* 디자인 토큰. 색은 바탕·글자·주황(강조) 세 가지뿐이다. 기본은 다크(검정 + 흰 글자), 밝음은 남색 + 크림 글자. */
 :root {
   --black: #0b0b0b;
   --surface: #141414;
@@ -12,7 +12,7 @@
   --ink-70: rgb(236 236 236 / 0.7);
   --line: rgb(236 236 236 / 0.12);
   --line-strong: rgb(236 236 236 / 0.28);
-  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 7.5, 라이트 5.2) */
+  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 7.5, 밝음 5.9) */
   --accent: var(--orange);
   --on-accent: var(--black);
 
@@ -31,17 +31,19 @@
   color-scheme: dark;
 }
 
+/* 밝음: 하얀 바탕 대신 깊은 남색에 크림 글자. 갑자기 눈부시지 않게 밝기만 한 단 올린다.
+   대비: 크림 글자 9.3, 70% 글자 5.3, 주황 5.9 (모두 바탕 #10286a 기준) */
 :root[data-theme='light'] {
-  --bg: #f6f4f0;
-  --bg-raised: #ece9e3;
-  --ink: #161616;
-  --ink-70: rgb(22 22 22 / 0.7);
-  --line: rgb(22 22 22 / 0.12);
-  --line-strong: rgb(22 22 22 / 0.28);
-  --accent: #b83a06;
-  --on-accent: #ffffff;
+  --bg: #10286a;
+  --bg-raised: #16317a;
+  --ink: #e2d2c4;
+  --ink-70: rgb(226 210 196 / 0.7);
+  --line: rgb(226 210 196 / 0.14);
+  --line-strong: rgb(226 210 196 / 0.3);
+  --accent: #ff8c3a;
+  --on-accent: #10286a;
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * {
@@ -115,22 +117,65 @@ button:active:not(:disabled) {
   }
 }
 
-/* 테마 전환: 새 테마가 단추 자리에서 원으로 번진다. 좌표는 ThemeToggle 이 넣는다. */
-@keyframes theme-spread {
-  from {
-    clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0));
+/* 테마 전환: 촛불을 켜듯 단추 자리에서 가장자리가 흐린 빛이 천천히 번진다. 처음에 한두 번 일렁이다 자리를 잡는다.
+   밝음 → 다크는 반대로 빛이 단추 쪽으로 오므라들며 꺼진다. 좌표와 방향은 ThemeToggle 이 넣는다. */
+@property --candle-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes candle-light {
+  0% {
+    --candle-r: 0px;
+    opacity: 0;
   }
-  to {
-    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0));
+  14% {
+    opacity: 0.55;
+  }
+  22% {
+    opacity: 0.4;
+  }
+  38% {
+    opacity: 0.8;
+  }
+  100% {
+    --candle-r: calc(var(--theme-r, 150vmax) * 2);
+    opacity: 1;
   }
 }
-::view-transition-old(root) {
+@keyframes candle-out {
+  0% {
+    --candle-r: calc(var(--theme-r, 150vmax) * 2);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.7;
+  }
+  100% {
+    --candle-r: 0px;
+    opacity: 0;
+  }
+}
+::view-transition-old(root),
+::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
-::view-transition-new(root) {
-  animation: theme-spread var(--dur-fast) var(--ease-out);
-  mix-blend-mode: normal;
+/* 가장자리를 넓게 흐려 촛불 빛처럼 번지게 한다 */
+:root[data-theme-dir='light']::view-transition-new(root),
+:root[data-theme-dir='dark']::view-transition-old(root) {
+  mask-image: radial-gradient(
+    circle at var(--theme-x, 50%) var(--theme-y, 0),
+    #000 calc(var(--candle-r) * 0.45),
+    transparent var(--candle-r)
+  );
+}
+:root[data-theme-dir='light']::view-transition-new(root) {
+  animation: candle-light 1400ms cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+:root[data-theme-dir='dark']::view-transition-old(root) {
+  z-index: 1;
+  animation: candle-out 900ms cubic-bezier(0.5, 0, 0.7, 0.4) both;
 }
 [data-theme-switching] *,
 [data-theme-switching] *::before,
@@ -983,8 +1028,8 @@ button:active:not(:disabled) {
   color-scheme: dark;
 }
 :root[data-theme='light'] .code {
-  background-color: #161616;
-  border-color: #161616;
+  background-color: #0a1c4f;
+  border-color: #0a1c4f;
 }
 .code__bar {
   display: flex;

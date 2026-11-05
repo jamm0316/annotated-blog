@@ -2,8 +2,9 @@
 
 import type { MouseEvent } from 'react';
 
-// 다크(검정, 기본) ↔ 라이트. 선택은 localStorage 에 남긴다.
-// 새 테마는 누른 단추 자리에서 원으로 번져 화면을 덮는다. 움직임을 줄인 환경에서는 바로 바뀐다.
+// 다크(검정, 기본) ↔ 밝음(남색 + 크림). 선택은 localStorage 에 남긴다.
+// 밝음을 켜면 누른 단추 자리에서 촛불이 켜지듯 빛이 천천히 번지고, 끄면 단추 쪽으로 오므라들며 꺼진다.
+// 움직임을 줄인 환경에서는 바로 바뀐다.
 export function ThemeToggle() {
   const toggle = (event: MouseEvent<HTMLButtonElement>) => {
     const root = document.documentElement;
@@ -33,8 +34,12 @@ export function ThemeToggle() {
 
     // 스냅샷 사이에서 바탕색 페이드가 겹치지 않게, 바뀌는 동안은 전환 효과를 끈다
     root.setAttribute('data-theme-switching', '');
+    root.dataset.themeDir = next;
     const transition = document.startViewTransition(apply);
-    transition.finished.finally(() => root.removeAttribute('data-theme-switching'));
+    transition.finished.finally(() => {
+      root.removeAttribute('data-theme-switching');
+      delete root.dataset.themeDir;
+    });
   };
 
   return (
