@@ -58,7 +58,7 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   // 접히는 동안에도 칩이 남아 있어야 하므로 마지막으로 연 분류를 따로 둔다
   const [shown, setShown] = useState<Category>('note');
   // 주제 칩은 여러 개를 함께 고를 수 있다. 고른 것 중 하나라도 맞으면 보인다. 비어 있으면 전체.
-  const [sub, setSub] = useState<string[]>([]);
+  const [rawSub, setSub] = useState<string[]>([]);
 
   const select = (next: Category | null, picked: string[] = []) => {
     setMain(next);
@@ -108,6 +108,8 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
     ];
   }, [posts, lab, shown]);
 
+  // 예전 링크에 지금은 없는 칩 이름이 남아 있으면 무시한다. 다음에 칩을 누르면 주소에서도 빠진다.
+  const sub = rawSub.filter((v) => v !== '' && subItems.some((i) => i.value === v));
   const labList = lab.filter((l) => sub.length === 0 || sub.includes(l.kind));
   const matches = (p: BrowserPost) => (main === 'note' ? p.areas.some((a) => sub.includes(a)) : sub.includes(p.topic));
   const list = posts.filter((p) => (!main || p.category === main) && (!main || sub.length === 0 || matches(p)));
