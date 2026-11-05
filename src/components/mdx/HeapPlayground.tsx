@@ -29,7 +29,7 @@ export function HeapPlayground({ peak, rows, ratio, memory: m0, caption }: Props
   const changed = n !== rows || memory !== m0;
 
   return (
-    <figure className="figure frame playground">
+    <figure className="figure card playground">
       <div className="playground__controls">
         <label className="playground__field">
           <span className="mono">데이터 건수</span>

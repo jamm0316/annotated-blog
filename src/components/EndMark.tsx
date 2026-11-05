@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// 본문 끝 표시. 화면에 들어오면 점이 가로선으로 늘어나고 '끝'이 선 끝에 놓인다.
+// 본문 끝 표시. 화면에 들어오면 점이 가로선으로 늘어나고 EOF 가 선 끝에 놓인다.
 export function EndMark() {
   const ref = useRef<HTMLParagraphElement>(null);
   const [drawn, setDrawn] = useState(false);
@@ -25,7 +25,7 @@ export function EndMark() {
   return (
     <p ref={ref} className={`mono end-mark${drawn ? ' is-drawn' : ''}`}>
       <span className="end-mark__line" aria-hidden />
-      <span className="end-mark__word">끝</span>
+      <span className="end-mark__word">EOF</span>
     </p>
   );
 }

@@ -2,14 +2,14 @@
 
 import type { MouseEvent } from 'react';
 
-// 라이트(베이지 종이) ↔ 다크(청사진). 선택은 localStorage 에 남긴다.
+// 다크(검정, 기본) ↔ 라이트. 선택은 localStorage 에 남긴다.
 // 새 테마는 누른 단추 자리에서 원으로 번져 화면을 덮는다. 움직임을 줄인 환경에서는 바로 바뀐다.
 export function ThemeToggle() {
   const toggle = (event: MouseEvent<HTMLButtonElement>) => {
     const root = document.documentElement;
-    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
     const apply = () => {
-      if (next === 'dark') root.dataset.theme = 'dark';
+      if (next === 'light') root.dataset.theme = 'light';
       else delete root.dataset.theme;
     };
     try {

@@ -1,4 +1,4 @@
-# annotated-blog
+# evan.log
 
 Evan 의 기술 노트와 독후감. 글은 `content/posts/<slug>/index.mdx` 에 MDX 로 쓴다.
 

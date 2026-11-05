@@ -24,7 +24,7 @@ export function BatchPlayground({ n: n0, batch: b0, batchMb, caption }: Props) {
   const changed = n !== n0 || batch !== b0;
 
   return (
-    <figure className="figure frame playground">
+    <figure className="figure card playground">
       <div className="playground__controls">
         <label className="playground__field">
           <span className="mono">처리 건수 N</span>

@@ -34,9 +34,9 @@ export function NextNav({ items }: { items: Item[] }) {
         <p className="mono next-nav__heading">이어서 읽기</p>
         <div className="next-nav__list">
           {items.map((p) => (
-            <Link key={p.slug} href={`/posts/${p.slug}`} className="next-nav__item frame">
+            <Link key={p.slug} href={`/posts/${p.slug}`} className="next-nav__item card">
               <span className="mono next-nav__meta">
-                <span>▸ {p.reason}</span>
+                <span className="accent">{p.reason}</span>
                 <span>{p.date}</span>
               </span>
               <span className="next-nav__title">{p.title}</span>

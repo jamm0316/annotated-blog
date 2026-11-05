@@ -22,8 +22,8 @@ const withMDX = createMDX({
       [
         'rehype-pretty-code',
         {
-          // 코드 색은 CSS 변수(--code-*)로 받아 globals.css 의 남색·베이지 토큰에서 정한다.
-          theme: createCssVariablesTheme({ name: 'annotated', variablePrefix: '--code-' }),
+          // 코드 색은 CSS 변수(--code-*)로 받아 globals.css 의 토큰에서 정한다.
+          theme: createCssVariablesTheme({ name: 'evan-log', variablePrefix: '--code-' }),
           defaultLang: 'text',
           keepBackground: false,
         },

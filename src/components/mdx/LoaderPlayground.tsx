@@ -24,7 +24,7 @@ export function LoaderPlayground({ t: t0, r: r0, pool, caption }: Props) {
   const changed = t !== t0 || r !== r0;
 
   return (
-    <figure className="figure frame playground">
+    <figure className="figure card playground">
       <div className="playground__controls">
         <label className="playground__field">
           <span className="mono">재생성 시간 T</span>

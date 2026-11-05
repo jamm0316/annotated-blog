@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { EndMark } from '@/components/EndMark';
 import { NextNav } from '@/components/NextNav';
-import { ReadingRuler } from '@/components/ReadingRuler';
+import { Toc } from '@/components/Toc';
 import { formatDate, getNeighbours, getPost, getPosts } from '@/lib/posts';
 
 export function generateStaticParams() {
@@ -33,15 +33,15 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
   return (
     <>
       <div className="post-shell">
-        <aside className="post-shell__ruler">
-          <ReadingRuler />
+        <aside className="post-shell__toc">
+          <Toc />
         </aside>
         <article className="article" lang={post.lang}>
           <header className="article__header">
             <div className="mono article__kicker">
-              {post.topic && <span className="article__topic">{post.topic}</span>}
+              {post.topic && <span className="article__topic">[{post.topic}]</span>}
               {post.tags.map((tag) => (
-                <span key={tag}>{tag}</span>
+                <span key={tag}>#{tag}</span>
               ))}
             </div>
             <h1 className="article__title">{post.title}</h1>
@@ -53,7 +53,7 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
               {post.series && (
                 <>
                   <span aria-hidden>·</span>
-                  <span>▸ {post.series}</span>
+                  <span>{post.series}</span>
                 </>
               )}
             </div>
