@@ -154,6 +154,13 @@ export function getNeighbours(slug: string, limit = 2): Neighbour[] {
     push(same[j + 1], `같은 topic · ${self.topic}`);
     push(same[j - 1], `같은 topic · ${self.topic}`);
   }
+  // 연재·topic 으로 다 못 채우면 같은 분류에서 날짜가 가까운 글로 채운다. 혼자인 topic 의 글도 끝이 비지 않게 한다.
+  const label = self.category === 'book' ? '독후감' : '기술 노트';
+  const days = (p: PostMeta) => Math.abs(Date.parse(p.date) - Date.parse(self.date));
+  posts
+    .filter((p) => p.category === self.category)
+    .sort((a, b) => days(a) - days(b))
+    .forEach((p) => push(p, `가까운 ${label}`));
   return out;
 }
 

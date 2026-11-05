@@ -62,7 +62,7 @@ html {
 body {
   background-color: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-serif), ui-serif, 'AppleMyungjo', serif;
   font-size: 16px;
   line-height: 1.85;
   word-break: keep-all;

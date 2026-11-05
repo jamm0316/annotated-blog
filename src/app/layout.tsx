@@ -1,12 +1,20 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans_KR, Noto_Serif_KR } from 'next/font/google';
 import Link from 'next/link';
 import { Analytics } from '@vercel/analytics/next';
 import { Droplets } from '@/components/Droplets';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import './globals.css';
 
-// 본문·제목은 고딕(IBM Plex Sans KR), 날짜·라벨·수치·코드는 같은 가족의 고정폭(IBM Plex Mono).
+// 본문·제목은 읽기 편한 명조(Noto Serif KR), 날짜·라벨·수치·코드는 고정폭(IBM Plex Mono).
+// IBM Plex Mono 에는 한글이 없어 고정폭 라벨 속 한글은 고딕(IBM Plex Sans KR)으로 채운다.
+const serif = Noto_Serif_KR({
+  variable: '--font-serif',
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 const sans = IBM_Plex_Sans_KR({
   variable: '--font-sans',
   weight: ['400', '500', '700'],
@@ -31,7 +39,7 @@ const themeScript = `try{if(localStorage.getItem('theme')==='light')document.doc
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="ko" data-scroll-behavior="smooth" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="ko" data-scroll-behavior="smooth" className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
