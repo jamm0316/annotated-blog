@@ -1,4 +1,5 @@
 import { PostBrowser } from '@/components/PostBrowser';
+import { LAB } from '@/lib/lab';
 import { getPosts } from '@/lib/posts';
 
 export default function Home() {
@@ -27,7 +28,7 @@ export default function Home() {
         <p className="mono hero__sub">백엔드 개발자 Evan 의 기술 노트와 독후감</p>
       </section>
 
-      {posts.length === 0 ? <p className="empty">첫 글을 준비하고 있습니다.</p> : <PostBrowser posts={posts} />}
+      {posts.length === 0 ? <p className="empty">첫 글을 준비하고 있습니다.</p> : <PostBrowser posts={posts} lab={LAB} />}
     </main>
   );
 }

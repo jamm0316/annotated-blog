@@ -56,6 +56,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/#book" className="mono">
                 독후감
               </Link>
+              <Link href="/#lab" className="mono">
+                연구실
+              </Link>
               <ThemeToggle />
             </nav>
           </div>

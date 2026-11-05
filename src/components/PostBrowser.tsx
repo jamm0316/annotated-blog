@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type PointerEvent } from 'react';
+import type { LabItem } from '@/lib/lab';
+import { LabGrid } from './LabGrid';
 import { LiquidTabs, type TabItem } from './LiquidTabs';
 
 export type BrowserPost = {
@@ -18,19 +20,21 @@ export type BrowserPost = {
   excerpt: string;
 };
 
-const CATEGORY_LABEL = { note: '기술 노트', book: '독후감' } as const;
+const CATEGORY_LABEL = { note: '기술 노트', book: '독후감', lab: '연구실' } as const;
 type Category = keyof typeof CATEGORY_LABEL;
 
-// 주소의 #note / #book 으로 첫 선택을 정한다. 예전 주소(#notes, #books)도 받는다.
+// 주소의 #note / #book / #lab 으로 첫 선택을 정한다. 예전 주소(#notes, #books)도 받는다.
 function fromHash(hash: string): Category | null {
   const h = hash.replace('#', '');
   if (h === 'note' || h === 'notes') return 'note';
   if (h === 'book' || h === 'books') return 'book';
+  if (h === 'lab') return 'lab';
   return null;
 }
 
-// 글 목록과 2단계 필터. 큰 분류(기술 노트·독후감)를 누르면 아래로 물방울이 떨어지며 주제 칩이 펼쳐진다.
-export function PostBrowser({ posts }: { posts: BrowserPost[] }) {
+// 글 목록과 2단계 필터. 큰 분류(기술 노트·독후감·연구실)를 누르면 아래로 물방울이 떨어지며 주제 칩이 펼쳐진다.
+// 연구실은 글이 아니라 GitHub Pages 에 올린 실험들이라 행 대신 썸네일 카드로 보여 준다.
+export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem[] }) {
   const [main, setMain] = useState<Category | null>(null);
   // 접히는 동안에도 칩이 남아 있어야 하므로 마지막으로 연 분류를 따로 둔다
   const [shown, setShown] = useState<Category>('note');
@@ -54,22 +58,23 @@ export function PostBrowser({ posts }: { posts: BrowserPost[] }) {
       (Object.keys(CATEGORY_LABEL) as Category[]).map((c) => ({
         value: c,
         label: CATEGORY_LABEL[c],
-        count: posts.filter((p) => p.category === c).length,
+        count: c === 'lab' ? lab.length : posts.filter((p) => p.category === c).length,
       })),
-    [posts],
+    [posts, lab],
   );
 
   const subItems = useMemo<TabItem[]>(() => {
-    const inCategory = posts.filter((p) => p.category === shown);
+    const inCategory = shown === 'lab' ? lab.map((l) => l.kind) : posts.filter((p) => p.category === shown).map((p) => p.topic);
     const counts = new Map<string, number>();
-    inCategory.forEach((p) => p.topic && counts.set(p.topic, (counts.get(p.topic) ?? 0) + 1));
+    inCategory.forEach((t) => t && counts.set(t, (counts.get(t) ?? 0) + 1));
     const topics = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
     return [
       { value: '', label: '전체', count: inCategory.length },
       ...topics.map(([topic, count]) => ({ value: topic, label: topic, count })),
     ];
-  }, [posts, shown]);
+  }, [posts, lab, shown]);
 
+  const labList = lab.filter((l) => !sub || l.kind === sub);
   const list = posts.filter((p) => (!main || p.category === main) && (!main || !sub || p.topic === sub));
 
   const onMain = (value: string) => {
@@ -96,13 +101,17 @@ export function PostBrowser({ posts }: { posts: BrowserPost[] }) {
           <h2 className="mono">
             <span className="accent">#</span> {heading}
           </h2>
-          <span className="mono">{list.length}편</span>
+          <span className="mono">{main === 'lab' ? `${labList.length}개` : `${list.length}편`}</span>
         </div>
-        <ul className="rows" key={`${main}-${sub}`}>
-          {list.map((p, i) => (
-            <PostRow key={p.slug} post={p} index={i} />
-          ))}
-        </ul>
+        {main === 'lab' ? (
+          <LabGrid key={`lab-${sub}`} items={labList} />
+        ) : (
+          <ul className="rows" key={`${main}-${sub}`}>
+            {list.map((p, i) => (
+              <PostRow key={p.slug} post={p} index={i} />
+            ))}
+          </ul>
+        )}
       </section>
     </>
   );
