@@ -25,13 +25,30 @@ export type BrowserPost = {
 const CATEGORY_LABEL = { note: '기술 노트', book: '독후감', lab: '연구실' } as const;
 type Category = keyof typeof CATEGORY_LABEL;
 
-// 주소의 #note / #book / #lab 으로 첫 선택을 정한다. 예전 주소(#notes, #books)도 받는다.
-function fromHash(hash: string): Category | null {
-  const h = hash.replace('#', '');
-  if (h === 'note' || h === 'notes') return 'note';
-  if (h === 'book' || h === 'books') return 'book';
-  if (h === 'lab') return 'lab';
-  return null;
+// 고른 탭과 칩을 주소에 남긴다: #note, #note=성능 최적화,캐싱 전략. 글을 보고 뒤로 오면 그대로 돌아오고, 주소를 그대로 공유할 수 있다.
+// 예전 주소(#notes, #books)도 받는다.
+function fromHash(hash: string): { main: Category | null; sub: string[] } {
+  const [head, rest = ''] = hash.replace('#', '').split('=');
+  const main =
+    head === 'note' || head === 'notes'
+      ? 'note'
+      : head === 'book' || head === 'books'
+        ? 'book'
+        : head === 'lab'
+          ? 'lab'
+          : null;
+  let sub: string[] = [];
+  try {
+    sub = main && rest ? decodeURIComponent(rest).split(',').filter(Boolean) : [];
+  } catch {
+    // 손으로 고친 주소가 깨져 있으면 칩은 비운다
+  }
+  return { main, sub };
+}
+
+function toHash(main: Category | null, sub: string[]): string {
+  if (!main) return window.location.pathname;
+  return sub.length ? `#${main}=${sub.map(encodeURIComponent).join(',')}` : `#${main}`;
 }
 
 // 글 목록과 2단계 필터. 큰 분류(기술 노트·독후감·연구실)를 누르면 아래로 물방울이 떨어지며 주제 칩이 펼쳐진다.
@@ -43,14 +60,17 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   // 주제 칩은 여러 개를 함께 고를 수 있다. 고른 것 중 하나라도 맞으면 보인다. 비어 있으면 전체.
   const [sub, setSub] = useState<string[]>([]);
 
-  const select = (next: Category | null) => {
+  const select = (next: Category | null, picked: string[] = []) => {
     setMain(next);
     if (next) setShown(next);
-    setSub([]);
+    setSub(picked);
   };
 
   useEffect(() => {
-    const sync = () => select(fromHash(window.location.hash));
+    const sync = () => {
+      const { main, sub } = fromHash(window.location.hash);
+      select(main, sub);
+    };
     sync();
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
@@ -77,7 +97,8 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
         ),
       ];
     }
-    const inCategory = shown === 'lab' ? lab.map((l) => l.kind) : posts.filter((p) => p.category === shown).map((p) => p.topic);
+    const inCategory =
+      shown === 'lab' ? lab.map((l) => l.kind) : posts.filter((p) => p.category === shown).map((p) => p.topic);
     const counts = new Map<string, number>();
     inCategory.forEach((t) => t && counts.set(t, (counts.get(t) ?? 0) + 1));
     const topics = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
@@ -94,7 +115,12 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   const onMain = (value: string) => {
     const next = value === main ? null : (value as Category);
     select(next);
-    history.replaceState(null, '', next ? `#${next}` : window.location.pathname);
+    history.replaceState(null, '', toHash(next, []));
+  };
+
+  const onSub = (next: string[]) => {
+    setSub(next);
+    history.replaceState(null, '', toHash(main, next));
   };
 
   // 칩을 많이 고르면 제목이 길어지므로 두 개까지만 적고 나머지는 '외 n'
@@ -107,7 +133,7 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
         <LiquidTabs items={mainItems} value={main} onChange={onMain} label="큰 분류" drip />
         <div className={`filters__sub${main ? ' is-open' : ''}`} inert={!main}>
           <div className="filters__sub-inner">
-            <LiquidChips key={shown} items={subItems} values={sub} onChange={setSub} label="주제 (여러 개 선택)" />
+            <LiquidChips key={shown} items={subItems} values={sub} onChange={onSub} label="주제 (여러 개 선택)" />
           </div>
         </div>
       </div>
