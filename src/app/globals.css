@@ -1,4 +1,4 @@
-/* 디자인 토큰. 색은 바탕·글자·주황(강조) 세 가지뿐이다. 기본은 다크(검정 + 흰 글자), 밝음은 크림 바탕 + 남색 글자. */
+/* 디자인 토큰. 색은 바탕·글자·강조 세 가지뿐이다. 다크(기본)는 검정 + 흰 글자 + 주황, 밝음은 크림 + 짙은 회색 글자 + 남색. */
 :root {
   --black: #0b0b0b;
   --surface: #141414;
@@ -12,7 +12,7 @@
   --ink-70: rgb(236 236 236 / 0.7);
   --line: rgb(236 236 236 / 0.12);
   --line-strong: rgb(236 236 236 / 0.28);
-  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 7.5, 밝음 5.4) */
+  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 주황 7.5, 밝음 남색 10.7) */
   --accent: var(--orange);
   --on-accent: var(--black);
 
@@ -31,17 +31,18 @@
   color-scheme: dark;
 }
 
-/* 밝음: 새하얀 바탕 대신 따뜻한 크림 바탕에 남색 글자. 화면이 갑자기 눈부시지 않게 한다.
-   대비: 남색 글자 10.7, 75% 글자 5.6, 주황 5.4 (모두 바탕 #ece2d6 기준) */
+/* 밝음: 새하얀 바탕 대신 따뜻한 크림 바탕에 짙은 회색 글자, 강조는 남색. 주황은 다크에서만 강조색이다.
+   글자를 새까맣게 두면 크림 바탕과 대비가 너무 세서 눈이 피로하므로 회색을 살짝 섞는다.
+   대비(바탕 #ece2d6 기준): 글자 11.1, 75% 글자 5.5, 남색 강조 10.7 */
 :root[data-theme='light'] {
   --bg: #ece2d6;
   --bg-raised: #e3d6c7;
-  --ink: #10286a;
+  --ink: #2b2b2b;
   /* 크림 바탕에서는 70% 면 4.5:1 에 모자라 75% 로 둔다 */
-  --ink-70: rgb(16 40 106 / 0.75);
-  --line: rgb(16 40 106 / 0.14);
-  --line-strong: rgb(16 40 106 / 0.3);
-  --accent: #9e3800;
+  --ink-70: rgb(43 43 43 / 0.75);
+  --line: rgb(43 43 43 / 0.14);
+  --line-strong: rgb(43 43 43 / 0.3);
+  --accent: #10286a;
   --on-accent: #ece2d6;
 
   color-scheme: light;
@@ -1218,8 +1219,16 @@ button:active:not(:disabled) {
   color-scheme: dark;
 }
 :root[data-theme='light'] .code {
+  /* 밝음에서는 주황을 쓰지 않으므로 코드 강조도 남색 바탕 위의 하늘색·크림 단계로 바꾼다 */
+  --code-token-keyword: #9db8ff;
+  --code-token-string: #f0dcc4;
+  --code-token-string-expression: #f0dcc4;
+  --code-token-constant: #c4d3ff;
   background-color: #10286a;
   border-color: #10286a;
+}
+:root[data-theme='light'] .code__bar button:hover {
+  color: #9db8ff;
 }
 .code__bar {
   display: flex;
