@@ -1,4 +1,4 @@
-/* 디자인 토큰. 색은 바탕·글자·주황(강조) 세 가지뿐이다. 기본은 다크(검정 + 흰 글자), 밝음은 남색 + 크림 글자. */
+/* 디자인 토큰. 색은 바탕·글자·주황(강조) 세 가지뿐이다. 기본은 다크(검정 + 흰 글자), 밝음은 크림 바탕 + 남색 글자. */
 :root {
   --black: #0b0b0b;
   --surface: #141414;
@@ -12,7 +12,7 @@
   --ink-70: rgb(236 236 236 / 0.7);
   --line: rgb(236 236 236 / 0.12);
   --line-strong: rgb(236 236 236 / 0.28);
-  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 7.5, 밝음 5.9) */
+  /* 강조색. 글자로 써도 바탕 대비 4.5:1 을 넘는다 (다크 7.5, 밝음 5.4) */
   --accent: var(--orange);
   --on-accent: var(--black);
 
@@ -31,19 +31,20 @@
   color-scheme: dark;
 }
 
-/* 밝음: 하얀 바탕 대신 깊은 남색에 크림 글자. 갑자기 눈부시지 않게 밝기만 한 단 올린다.
-   대비: 크림 글자 9.3, 70% 글자 5.3, 주황 5.9 (모두 바탕 #10286a 기준) */
+/* 밝음: 새하얀 바탕 대신 따뜻한 크림 바탕에 남색 글자. 화면이 갑자기 눈부시지 않게 한다.
+   대비: 남색 글자 10.7, 75% 글자 5.6, 주황 5.4 (모두 바탕 #ece2d6 기준) */
 :root[data-theme='light'] {
-  --bg: #10286a;
-  --bg-raised: #16317a;
-  --ink: #e2d2c4;
-  --ink-70: rgb(226 210 196 / 0.7);
-  --line: rgb(226 210 196 / 0.14);
-  --line-strong: rgb(226 210 196 / 0.3);
-  --accent: #ff8c3a;
-  --on-accent: #10286a;
+  --bg: #ece2d6;
+  --bg-raised: #e3d6c7;
+  --ink: #10286a;
+  /* 크림 바탕에서는 70% 면 4.5:1 에 모자라 75% 로 둔다 */
+  --ink-70: rgb(16 40 106 / 0.75);
+  --line: rgb(16 40 106 / 0.14);
+  --line-strong: rgb(16 40 106 / 0.3);
+  --accent: #9e3800;
+  --on-accent: #ece2d6;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -117,65 +118,254 @@ button:active:not(:disabled) {
   }
 }
 
-/* 테마 전환: 촛불을 켜듯 단추 자리에서 가장자리가 흐린 빛이 천천히 번진다. 처음에 한두 번 일렁이다 자리를 잡는다.
-   밝음 → 다크는 반대로 빛이 단추 쪽으로 오므라들며 꺼진다. 좌표와 방향은 ThemeToggle 이 넣는다. */
-@property --candle-r {
+/* 테마 전환: 빗방울이 화면 곳곳에 산발적으로 떨어지고, 떨어진 자리마다 새 색이 번져 서로 이어지며 화면을 덮는다.
+   방울은 먼저 작게 맺혔다가(톡) 넓게 번진다. 떨어지는 자리는 ThemeToggle 이 매번 무작위로 넣는다(--rx-n, --ry-n).
+   마지막 방울까지 다 번지면 전체가 새 색이다. 반지름은 방울마다 따로 움직여야 해서 방울 수만큼 변수를 둔다. */
+@property --rain-0 {
   syntax: '<length>';
   inherits: false;
   initial-value: 0px;
 }
-@keyframes candle-light {
-  0% {
-    --candle-r: 0px;
-    opacity: 0;
-  }
-  14% {
-    opacity: 0.55;
-  }
-  22% {
-    opacity: 0.4;
-  }
-  38% {
-    opacity: 0.8;
-  }
-  100% {
-    --candle-r: calc(var(--theme-r, 150vmax) * 2);
-    opacity: 1;
-  }
+@property --rain-1 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
 }
-@keyframes candle-out {
-  0% {
-    --candle-r: calc(var(--theme-r, 150vmax) * 2);
-    opacity: 1;
-  }
-  70% {
-    opacity: 0.7;
-  }
-  100% {
-    --candle-r: 0px;
-    opacity: 0;
-  }
+@property --rain-2 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-3 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-4 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-5 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-6 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-7 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-8 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-9 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-10 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-11 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-12 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-13 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-14 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-15 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-16 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rain-17 {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes rain-0 {
+  0% { --rain-0: 0px; }
+  12% { --rain-0: 9px; }
+  32% { --rain-0: 14px; }
+  100% { --rain-0: 75vmax; }
+}
+@keyframes rain-1 {
+  0% { --rain-1: 0px; }
+  12% { --rain-1: 9px; }
+  32% { --rain-1: 14px; }
+  100% { --rain-1: 75vmax; }
+}
+@keyframes rain-2 {
+  0% { --rain-2: 0px; }
+  12% { --rain-2: 9px; }
+  32% { --rain-2: 14px; }
+  100% { --rain-2: 75vmax; }
+}
+@keyframes rain-3 {
+  0% { --rain-3: 0px; }
+  12% { --rain-3: 9px; }
+  32% { --rain-3: 14px; }
+  100% { --rain-3: 75vmax; }
+}
+@keyframes rain-4 {
+  0% { --rain-4: 0px; }
+  12% { --rain-4: 9px; }
+  32% { --rain-4: 14px; }
+  100% { --rain-4: 75vmax; }
+}
+@keyframes rain-5 {
+  0% { --rain-5: 0px; }
+  12% { --rain-5: 9px; }
+  32% { --rain-5: 14px; }
+  100% { --rain-5: 75vmax; }
+}
+@keyframes rain-6 {
+  0% { --rain-6: 0px; }
+  12% { --rain-6: 9px; }
+  32% { --rain-6: 14px; }
+  100% { --rain-6: 75vmax; }
+}
+@keyframes rain-7 {
+  0% { --rain-7: 0px; }
+  12% { --rain-7: 9px; }
+  32% { --rain-7: 14px; }
+  100% { --rain-7: 75vmax; }
+}
+@keyframes rain-8 {
+  0% { --rain-8: 0px; }
+  12% { --rain-8: 9px; }
+  32% { --rain-8: 14px; }
+  100% { --rain-8: 75vmax; }
+}
+@keyframes rain-9 {
+  0% { --rain-9: 0px; }
+  12% { --rain-9: 9px; }
+  32% { --rain-9: 14px; }
+  100% { --rain-9: 75vmax; }
+}
+@keyframes rain-10 {
+  0% { --rain-10: 0px; }
+  12% { --rain-10: 9px; }
+  32% { --rain-10: 14px; }
+  100% { --rain-10: 75vmax; }
+}
+@keyframes rain-11 {
+  0% { --rain-11: 0px; }
+  12% { --rain-11: 9px; }
+  32% { --rain-11: 14px; }
+  100% { --rain-11: 75vmax; }
+}
+@keyframes rain-12 {
+  0% { --rain-12: 0px; }
+  12% { --rain-12: 9px; }
+  32% { --rain-12: 14px; }
+  100% { --rain-12: 75vmax; }
+}
+@keyframes rain-13 {
+  0% { --rain-13: 0px; }
+  12% { --rain-13: 9px; }
+  32% { --rain-13: 14px; }
+  100% { --rain-13: 75vmax; }
+}
+@keyframes rain-14 {
+  0% { --rain-14: 0px; }
+  12% { --rain-14: 9px; }
+  32% { --rain-14: 14px; }
+  100% { --rain-14: 75vmax; }
+}
+@keyframes rain-15 {
+  0% { --rain-15: 0px; }
+  12% { --rain-15: 9px; }
+  32% { --rain-15: 14px; }
+  100% { --rain-15: 75vmax; }
+}
+@keyframes rain-16 {
+  0% { --rain-16: 0px; }
+  12% { --rain-16: 9px; }
+  32% { --rain-16: 14px; }
+  100% { --rain-16: 75vmax; }
+}
+@keyframes rain-17 {
+  0% { --rain-17: 0px; }
+  12% { --rain-17: 9px; }
+  32% { --rain-17: 14px; }
+  100% { --rain-17: 75vmax; }
 }
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
-/* 가장자리를 넓게 흐려 촛불 빛처럼 번지게 한다 */
-:root[data-theme-dir='light']::view-transition-new(root),
-:root[data-theme-dir='dark']::view-transition-old(root) {
-  mask-image: radial-gradient(
-    circle at var(--theme-x, 50%) var(--theme-y, 0),
-    #000 calc(var(--candle-r) * 0.45),
-    transparent var(--candle-r)
-  );
+::view-transition-group(root) {
+  animation-duration: 1720ms;
 }
-:root[data-theme-dir='light']::view-transition-new(root) {
-  animation: candle-light 1400ms cubic-bezier(0.3, 0, 0.2, 1) both;
-}
-:root[data-theme-dir='dark']::view-transition-old(root) {
-  z-index: 1;
-  animation: candle-out 900ms cubic-bezier(0.5, 0, 0.7, 0.4) both;
+:root[data-theme-rain]::view-transition-new(root) {
+  mask-image:
+    radial-gradient(circle at var(--rx-0, 50%) var(--ry-0, 50%), #000 var(--rain-0), transparent calc(var(--rain-0) + 1.5px)),
+    radial-gradient(circle at var(--rx-1, 50%) var(--ry-1, 50%), #000 var(--rain-1), transparent calc(var(--rain-1) + 1.5px)),
+    radial-gradient(circle at var(--rx-2, 50%) var(--ry-2, 50%), #000 var(--rain-2), transparent calc(var(--rain-2) + 1.5px)),
+    radial-gradient(circle at var(--rx-3, 50%) var(--ry-3, 50%), #000 var(--rain-3), transparent calc(var(--rain-3) + 1.5px)),
+    radial-gradient(circle at var(--rx-4, 50%) var(--ry-4, 50%), #000 var(--rain-4), transparent calc(var(--rain-4) + 1.5px)),
+    radial-gradient(circle at var(--rx-5, 50%) var(--ry-5, 50%), #000 var(--rain-5), transparent calc(var(--rain-5) + 1.5px)),
+    radial-gradient(circle at var(--rx-6, 50%) var(--ry-6, 50%), #000 var(--rain-6), transparent calc(var(--rain-6) + 1.5px)),
+    radial-gradient(circle at var(--rx-7, 50%) var(--ry-7, 50%), #000 var(--rain-7), transparent calc(var(--rain-7) + 1.5px)),
+    radial-gradient(circle at var(--rx-8, 50%) var(--ry-8, 50%), #000 var(--rain-8), transparent calc(var(--rain-8) + 1.5px)),
+    radial-gradient(circle at var(--rx-9, 50%) var(--ry-9, 50%), #000 var(--rain-9), transparent calc(var(--rain-9) + 1.5px)),
+    radial-gradient(circle at var(--rx-10, 50%) var(--ry-10, 50%), #000 var(--rain-10), transparent calc(var(--rain-10) + 1.5px)),
+    radial-gradient(circle at var(--rx-11, 50%) var(--ry-11, 50%), #000 var(--rain-11), transparent calc(var(--rain-11) + 1.5px)),
+    radial-gradient(circle at var(--rx-12, 50%) var(--ry-12, 50%), #000 var(--rain-12), transparent calc(var(--rain-12) + 1.5px)),
+    radial-gradient(circle at var(--rx-13, 50%) var(--ry-13, 50%), #000 var(--rain-13), transparent calc(var(--rain-13) + 1.5px)),
+    radial-gradient(circle at var(--rx-14, 50%) var(--ry-14, 50%), #000 var(--rain-14), transparent calc(var(--rain-14) + 1.5px)),
+    radial-gradient(circle at var(--rx-15, 50%) var(--ry-15, 50%), #000 var(--rain-15), transparent calc(var(--rain-15) + 1.5px)),
+    radial-gradient(circle at var(--rx-16, 50%) var(--ry-16, 50%), #000 var(--rain-16), transparent calc(var(--rain-16) + 1.5px)),
+    radial-gradient(circle at var(--rx-17, 50%) var(--ry-17, 50%), #000 var(--rain-17), transparent calc(var(--rain-17) + 1.5px));
+  animation:
+    rain-0 820ms cubic-bezier(0.55, 0, 0.35, 1) 0ms both,
+    rain-1 820ms cubic-bezier(0.55, 0, 0.35, 1) 53ms both,
+    rain-2 820ms cubic-bezier(0.55, 0, 0.35, 1) 106ms both,
+    rain-3 820ms cubic-bezier(0.55, 0, 0.35, 1) 159ms both,
+    rain-4 820ms cubic-bezier(0.55, 0, 0.35, 1) 212ms both,
+    rain-5 820ms cubic-bezier(0.55, 0, 0.35, 1) 265ms both,
+    rain-6 820ms cubic-bezier(0.55, 0, 0.35, 1) 318ms both,
+    rain-7 820ms cubic-bezier(0.55, 0, 0.35, 1) 371ms both,
+    rain-8 820ms cubic-bezier(0.55, 0, 0.35, 1) 424ms both,
+    rain-9 820ms cubic-bezier(0.55, 0, 0.35, 1) 476ms both,
+    rain-10 820ms cubic-bezier(0.55, 0, 0.35, 1) 529ms both,
+    rain-11 820ms cubic-bezier(0.55, 0, 0.35, 1) 582ms both,
+    rain-12 820ms cubic-bezier(0.55, 0, 0.35, 1) 635ms both,
+    rain-13 820ms cubic-bezier(0.55, 0, 0.35, 1) 688ms both,
+    rain-14 820ms cubic-bezier(0.55, 0, 0.35, 1) 741ms both,
+    rain-15 820ms cubic-bezier(0.55, 0, 0.35, 1) 794ms both,
+    rain-16 820ms cubic-bezier(0.55, 0, 0.35, 1) 847ms both,
+    rain-17 820ms cubic-bezier(0.55, 0, 0.35, 1) 900ms both;
 }
 [data-theme-switching] *,
 [data-theme-switching] *::before,
@@ -1028,8 +1218,8 @@ button:active:not(:disabled) {
   color-scheme: dark;
 }
 :root[data-theme='light'] .code {
-  background-color: #0a1c4f;
-  border-color: #0a1c4f;
+  background-color: #10286a;
+  border-color: #10286a;
 }
 .code__bar {
   display: flex;

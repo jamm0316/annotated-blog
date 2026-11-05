@@ -1,12 +1,12 @@
 'use client';
 
-import type { MouseEvent } from 'react';
-
-// 다크(검정, 기본) ↔ 밝음(남색 + 크림). 선택은 localStorage 에 남긴다.
-// 밝음을 켜면 누른 단추 자리에서 촛불이 켜지듯 빛이 천천히 번지고, 끄면 단추 쪽으로 오므라들며 꺼진다.
+// 다크(검정, 기본) ↔ 밝음(크림 바탕 + 남색 글자). 선택은 localStorage 에 남긴다.
+// 바꿀 때는 빗방울이 화면 곳곳에 산발적으로 떨어지고, 떨어진 자리마다 새 색이 번져 화면을 덮는다(globals.css 의 rain-n).
 // 움직임을 줄인 환경에서는 바로 바뀐다.
+const DROPS = 18;
+
 export function ThemeToggle() {
-  const toggle = (event: MouseEvent<HTMLButtonElement>) => {
+  const toggle = () => {
     const root = document.documentElement;
     const next = root.dataset.theme === 'light' ? 'dark' : 'light';
     const apply = () => {
@@ -23,22 +23,25 @@ export function ThemeToggle() {
       return;
     }
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    // 단추에서 가장 먼 화면 모서리까지 닿는 반지름
-    const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-    root.style.setProperty('--theme-x', `${x}px`);
-    root.style.setProperty('--theme-y', `${y}px`);
-    root.style.setProperty('--theme-r', `${r}px`);
+    // 화면을 격자로 나눠 칸마다 한 방울씩, 칸 안에서는 무작위 자리에 떨어뜨린다. 몰리지 않으면서도 불규칙하게 보인다.
+    // 떨어지는 순서도 섞는다(CSS 는 n 번째 방울일수록 늦게 떨어진다).
+    const cols = 6;
+    const rows = Math.ceil(DROPS / cols);
+    const cells = Array.from({ length: DROPS }, (_, i) => i).sort(() => Math.random() - 0.5);
+    cells.forEach((cell, n) => {
+      const x = ((cell % cols) + Math.random()) / cols;
+      const y = (Math.floor(cell / cols) + Math.random()) / rows;
+      root.style.setProperty(`--rx-${n}`, `${(x * 100).toFixed(1)}%`);
+      root.style.setProperty(`--ry-${n}`, `${(y * 100).toFixed(1)}%`);
+    });
 
     // 스냅샷 사이에서 바탕색 페이드가 겹치지 않게, 바뀌는 동안은 전환 효과를 끈다
     root.setAttribute('data-theme-switching', '');
-    root.dataset.themeDir = next;
+    root.setAttribute('data-theme-rain', '');
     const transition = document.startViewTransition(apply);
     transition.finished.finally(() => {
       root.removeAttribute('data-theme-switching');
-      delete root.dataset.themeDir;
+      root.removeAttribute('data-theme-rain');
     });
   };
 
