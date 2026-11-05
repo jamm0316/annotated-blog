@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from 'next/font/google';
 import Link from 'next/link';
 import { Analytics } from '@vercel/analytics/next';
+import { Droplets } from '@/components/Droplets';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import './globals.css';
 
@@ -41,10 +42,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               evan<span className="accent">.log</span>
             </Link>
             <nav aria-label="주 메뉴" className="site-nav">
-              <Link href="/#notes" className="mono">
+              <Link href="/#note" className="mono">
                 기술 노트
               </Link>
-              <Link href="/#books" className="mono">
+              <Link href="/#book" className="mono">
                 독후감
               </Link>
               <ThemeToggle />
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             </span>
           </div>
         </footer>
+        <Droplets />
         <Analytics />
       </body>
     </html>

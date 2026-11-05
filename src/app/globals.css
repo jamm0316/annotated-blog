@@ -24,6 +24,9 @@
   --dur-fast: 200ms;
   --dur-slow: 640ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* 물방울 움직임: 살짝 지나쳤다가 돌아온다 */
+  --dur-liquid: 480ms;
+  --ease-liquid: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   color-scheme: dark;
 }
@@ -227,7 +230,7 @@ button:active:not(:disabled) {
 
 /* 첫 화면 */
 .hero {
-  padding: 120px 0 88px;
+  padding: 120px 0 40px;
 }
 .hero__word {
   display: flex;
@@ -247,15 +250,8 @@ button:active:not(:disabled) {
   margin: 0 0 0.08em 0.12em;
   background-color: var(--accent);
 }
-.hero__tagline {
-  margin: 32px 0 0;
-  font-size: 21px;
-  line-height: 1.5;
-  font-weight: 500;
-  animation: rise var(--dur-slow) var(--ease-out) var(--dur-instant) both;
-}
 .hero__sub {
-  margin: 8px 0 0;
+  margin: 28px 0 0;
   font-size: 13px;
   color: var(--ink-70);
   animation: rise var(--dur-slow) var(--ease-out) var(--dur-instant) both;
@@ -300,7 +296,22 @@ button:active:not(:disabled) {
   border-bottom: 1px solid var(--line);
   border-radius: var(--radius);
   text-decoration: none;
-  transition: background-color var(--dur-instant) ease-out;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+/* 손이 들어온 자리(--px, --py)에서 바탕이 물처럼 번져 차오른다 */
+.row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--bg-raised);
+  clip-path: circle(0 at var(--px, 50%) var(--py, 50%));
+  transition: clip-path var(--dur-slow) var(--ease-out);
+}
+.row:is(:hover, :focus-visible)::before {
+  clip-path: circle(150% at var(--px, 50%) var(--py, 50%));
 }
 .row__date {
   font-size: 12px;
@@ -325,16 +336,10 @@ button:active:not(:disabled) {
   font-weight: 500;
   transition: color var(--dur-instant) ease-out;
 }
-.row:focus-visible {
-  background-color: var(--bg-raised);
-}
 .row:focus-visible .row__title {
   color: var(--accent);
 }
 @media (hover: hover) {
-  .row:hover {
-    background-color: var(--bg-raised);
-  }
   .row:hover .row__title {
     color: var(--accent);
   }
@@ -349,6 +354,252 @@ button:active:not(:disabled) {
   border-radius: 999px;
   padding: 1px 10px;
   white-space: nowrap;
+}
+
+/* 배지: 손을 올리면 물방울처럼 한 번 출렁인다 (반복하지 않는다) */
+@keyframes wobble {
+  0% { border-radius: 999px; transform: none; }
+  30% { border-radius: 60% 40% 55% 45% / 70% 60% 40% 30%; transform: scale(1.08, 0.94); }
+  60% { border-radius: 45% 55% 40% 60% / 40% 50% 60% 50%; transform: scale(0.96, 1.05); }
+  100% { border-radius: 999px; transform: none; }
+}
+@media (hover: hover) {
+  .row:hover .badge {
+    animation: wobble var(--dur-slow) var(--ease-out);
+  }
+}
+
+/* 목록 행 미리보기: 펼쳐지는 높이는 다 쓴 글 기준으로 미리 잡고, 그 위에 글자가 타이핑된다 */
+.row__preview {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-liquid) var(--ease-liquid);
+}
+.row.is-open .row__preview {
+  grid-template-rows: 1fr;
+}
+.row__preview-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.row__preview-text {
+  position: relative;
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink-70);
+}
+.row__ghost {
+  visibility: hidden;
+}
+.row__typed {
+  position: absolute;
+  inset: 0;
+}
+.row__caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 2px;
+  background-color: var(--accent);
+}
+.row__more {
+  color: var(--ink);
+}
+.row__more-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 목록이 바뀔 때 행이 물방울 맺히듯 차례로 떨어진다 */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rows__item {
+  animation: drop-in var(--dur-liquid) var(--ease-liquid) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* 필터 */
+.filters {
+  margin-bottom: 40px;
+}
+.filters__sub {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-liquid) var(--ease-liquid);
+}
+.filters__sub.is-open {
+  grid-template-rows: 1fr;
+}
+.filters__sub-inner {
+  overflow: hidden;
+  min-height: 0;
+  margin: 0 -4px;
+}
+/* 칩이 튀어 오를 때 잘리지 않게 여유를 둔다. 접혔을 때 비치지 않도록 여백은 안쪽 요소의 margin 으로 준다. */
+.filters__sub-inner > .liquid {
+  margin: 14px 4px 4px;
+}
+/* 2단계 칩: 펼쳐질 때 물방울처럼 차례로 맺힌다 */
+@keyframes bead {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.filters__sub.is-open .liquid__tab {
+  animation: bead var(--dur-liquid) var(--ease-liquid) both;
+  animation-delay: calc(var(--i, 0) * 35ms + 120ms);
+}
+
+/* 물방울 탭 */
+.liquid {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.liquid__goo {
+  position: absolute;
+  inset: -12px -12px -48px;
+  /* 탭 글자는 위에 그대로 두고, 물방울 층에만 goo 필터를 건다 */
+  filter: url(#goo);
+  pointer-events: none;
+}
+.liquid__blob {
+  position: absolute;
+  margin: 12px;
+  border-radius: 999px;
+  background-color: var(--accent);
+  transition:
+    left var(--dur-liquid) var(--ease-liquid),
+    right var(--dur-liquid) var(--ease-liquid),
+    top var(--dur-liquid) var(--ease-liquid),
+    transform var(--dur-liquid) var(--ease-liquid),
+    opacity var(--dur-fast) ease-out;
+}
+/* 가는 쪽 끝이 먼저 늘어나고, 뒤쪽 끝이 늦게 따라붙는다 */
+.liquid__blob[data-dir='right'] {
+  transition-delay: 90ms, 0ms, 0ms, 0ms, 0ms;
+}
+.liquid__blob[data-dir='left'] {
+  transition-delay: 0ms, 90ms, 0ms, 0ms, 0ms;
+}
+.liquid__blob[data-hidden] {
+  opacity: 0;
+  transform: scale(0.3);
+  transition-duration: 0ms, 0ms, 0ms, var(--dur-fast), var(--dur-fast);
+}
+@keyframes squish {
+  0% { transform: none; }
+  35% { transform: scaleY(0.78); }
+  70% { transform: scaleY(1.06); }
+  100% { transform: none; }
+}
+.liquid__blob.is-squish {
+  animation: squish var(--dur-liquid) var(--ease-out);
+}
+/* 고른 탭 아래로 떨어지는 한 방울. goo 필터 때문에 처음에는 탭에 붙어 늘어나다 떨어진다. */
+.liquid__drop {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: 12px 0 0 5px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  opacity: 0;
+}
+@keyframes fall {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  60% { opacity: 1; transform: translateY(26px) scale(0.7); }
+  100% { opacity: 0; transform: translateY(40px) scale(0.2); }
+}
+.liquid__drop.is-falling {
+  animation: fall var(--dur-slow) cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+.liquid__tab {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) ease-out,
+    border-color var(--dur-fast) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+.liquid__tab[aria-pressed='true'] {
+  color: var(--on-accent);
+  border-color: transparent;
+}
+@media (hover: hover) {
+  .liquid__tab:hover:not([aria-pressed='true']) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+.liquid__count {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.liquid--sm {
+  gap: 6px;
+}
+.liquid--sm .liquid__tab {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 누른 자리에서 번지는 물방울 (Droplets 가 넣는다) */
+@keyframes ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.28;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+.droplet {
+  position: absolute;
+  border-radius: 50%;
+  background-color: var(--accent);
+  pointer-events: none;
+  animation: ripple var(--dur-slow) var(--ease-out) forwards;
+}
+.icon-btn,
+.code__bar button,
+.playground__legend button {
+  position: relative;
+  overflow: hidden;
 }
 
 /* 글 본문: 왼쪽 목차 칸 + 본문 칸 */
@@ -815,6 +1066,9 @@ button:active:not(:disabled) {
   gap: 12px;
 }
 .next-nav__item {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -825,9 +1079,22 @@ button:active:not(:disabled) {
     transform var(--dur-slow) var(--ease-out),
     border-color var(--dur-instant) ease-out;
 }
+/* 카드도 손이 들어온 자리에서 주황이 옅게 번진다 */
+.next-nav__item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+  clip-path: circle(0 at var(--px, 50%) var(--py, 50%));
+  transition: clip-path var(--dur-slow) var(--ease-out);
+}
 @media (hover: hover) {
   .next-nav__item:hover {
     border-color: var(--accent);
+  }
+  .next-nav__item:hover::before {
+    clip-path: circle(150% at var(--px, 50%) var(--py, 50%));
   }
 }
 .next-nav[data-state='waiting'] .next-nav__item {
@@ -922,10 +1189,7 @@ button:active:not(:disabled) {
     font-size: 17px;
   }
   .hero {
-    padding: 72px 0 56px;
-  }
-  .hero__tagline {
-    font-size: 18px;
+    padding: 72px 0 32px;
   }
   .article {
     padding-top: 56px;
@@ -966,7 +1230,6 @@ button:active:not(:disabled) {
 
 @media (prefers-reduced-motion: reduce) {
   .hero__word,
-  .hero__tagline,
   .hero__sub,
   .article__title {
     animation: none;
@@ -987,8 +1250,21 @@ button:active:not(:disabled) {
   .prose :is(h2, h3)::before,
   .playground__acquired,
   .playground__waiting,
-  .playground__pool {
+  .playground__pool,
+  .row::before,
+  .next-nav__item::before,
+  .row__preview,
+  .filters__sub,
+  .liquid__blob,
+  .liquid__tab {
     transition: none;
+  }
+  .rows__item,
+  .filters__sub.is-open .liquid__tab,
+  .liquid__blob.is-squish,
+  .liquid__drop.is-falling,
+  .row:hover .badge {
+    animation: none;
   }
   .end-mark__line {
     width: calc(100% - 40px);

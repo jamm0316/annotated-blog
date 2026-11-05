@@ -23,12 +23,44 @@ export type PostMeta = {
   draft: boolean;
   /** 분 단위 예상 읽기 시간 */
   readingTime: number;
+  /** 목록 미리보기에 타이핑되는 본문 앞부분. 마크다운·태그를 걷어낸 평문 */
+  excerpt: string;
 };
 
 // 한국어는 글자 수로 센다. 코드 블록과 컴포넌트 태그는 뺀다.
 function readingTime(body: string): number {
   const text = body.replace(/```[\s\S]*?```/g, '').replace(/<[^>]+>/g, '');
   return Math.max(1, Math.round(text.replace(/\s/g, '').length / 500));
+}
+
+// 본문 앞부분을 평문으로 뽑는다. 코드·표·소제목·그림·컴포넌트 블록은 건너뛴다.
+function excerpt(body: string, max = 150): string {
+  const text = body
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter((b) => b && !/^(#|\||<|import |export |!\[|---)/.test(b))
+    .map((b) =>
+      b
+        .replace(/^>\s?/gm, '')
+        .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')
+        .replace(/^[—–-]+$/gm, '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/[*`]|~~/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    // 글자나 숫자가 하나도 없는 블록(구분선 흉내 등)은 버린다
+    .filter((b) => /[\p{L}\p{N}]/u.test(b))
+    .join(' ');
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.·:;]+$/, '');
 }
 
 function readPost(slug: string): PostMeta | null {
@@ -54,6 +86,7 @@ function readPost(slug: string): PostMeta | null {
     lang: String(data.lang ?? 'ko'),
     draft: Boolean(data.draft),
     readingTime: readingTime(content),
+    excerpt: excerpt(content),
   };
 }
 
