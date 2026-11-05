@@ -1,4 +1,4 @@
-// 연구실: GitHub Pages 에 올려 둔 작은 실험들. 새로 올리면 여기에 한 줄 더하고 썸네일을 public/lab/<repo>.png 로 둔다.
+// 연구실: GitHub Pages 에 올려 둔 작은 실험들과, 로컬에서만 도는 도구. 새로 올리면 여기에 한 줄 더하고 썸네일을 public/lab/<repo>.png 로 둔다.
 // 썸네일은 1200×750 화면을 그대로 찍은 것. 설명의 사실은 저장소 README 와 페이지에 적힌 것만 쓴다.
 
 export type LabItem = {
@@ -13,12 +13,24 @@ export type LabItem = {
   stack: string[];
   /** 저장소를 만든 날 YYYY-MM-DD */
   date: string;
-  url: string;
+  /** 배포 주소. 로컬에서만 도는 것은 비워 두고, 카드가 저장소로 간다 */
+  url?: string;
 };
 
 const pages = (repo: string, path = '') => `https://jamm0316.github.io/${repo}/${path}`;
 
 export const LAB: LabItem[] = [
+  {
+    repo: 'travel_plan_gapyeong',
+    title: '춘천 환갑여행',
+    kind: '기록',
+    pitch: '예순 번의 여름을 지나온 두 분께.',
+    description:
+      '노션 여행 계획을 옮긴 하루짜리 여행 앱. 지난 일정은 흐리게, 지금 일정에는 NOW 배지를 붙이고, 실시간 날씨·카카오맵 주소 복사·준비물 체크를 폰 하나로 본다. 다녀온 뒤에는 추억 모드로 넘어간다.',
+    stack: ['Vanilla JS', 'PWA', 'Open-Meteo'],
+    date: '2026-08-21',
+    url: pages('travel_plan_gapyeong'),
+  },
   {
     repo: 'EIPSC',
     title: '정처기 실기 카드',
@@ -62,6 +74,16 @@ export const LAB: LabItem[] = [
     stack: ['HTML', 'CSS', 'JavaScript'],
     date: '2026-06-19',
     url: pages('teammate-team-building-intro'),
+  },
+  {
+    repo: 'pixel-agents',
+    title: 'Pixel Agents',
+    kind: '도구',
+    pitch: '내 Claude Code 에이전트들이 도트 오피스에서 일한다.',
+    description:
+      'Claude Code 메인 세션과 서브에이전트의 활동을 PixiJS 픽셀 캐릭터로 띄우고, PreToolUse 훅으로 도구 실행을 브라우저에서 승인·거부한다. 세션 기록을 직접 읽어 로컬에서만 돈다.',
+    stack: ['TypeScript', 'React', 'PixiJS', 'Hono'],
+    date: '2026-04-15',
   },
   {
     repo: 'Breathe',
