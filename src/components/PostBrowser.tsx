@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEve
 import { AREAS } from '@/lib/areas';
 import type { LabItem } from '@/lib/lab';
 import { LabGrid } from './LabGrid';
-import { LiquidTabs, type TabItem } from './LiquidTabs';
+import { LiquidChips, LiquidTabs, type TabItem } from './LiquidTabs';
 
 export type BrowserPost = {
   slug: string;
@@ -40,12 +40,13 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   const [main, setMain] = useState<Category | null>(null);
   // 접히는 동안에도 칩이 남아 있어야 하므로 마지막으로 연 분류를 따로 둔다
   const [shown, setShown] = useState<Category>('note');
-  const [sub, setSub] = useState('');
+  // 주제 칩은 여러 개를 함께 고를 수 있다. 고른 것 중 하나라도 맞으면 보인다. 비어 있으면 전체.
+  const [sub, setSub] = useState<string[]>([]);
 
   const select = (next: Category | null) => {
     setMain(next);
     if (next) setShown(next);
-    setSub('');
+    setSub([]);
   };
 
   useEffect(() => {
@@ -86,9 +87,9 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
     ];
   }, [posts, lab, shown]);
 
-  const labList = lab.filter((l) => !sub || l.kind === sub);
-  const matches = (p: BrowserPost) => (main === 'note' ? p.areas.includes(sub) : p.topic === sub);
-  const list = posts.filter((p) => (!main || p.category === main) && (!main || !sub || matches(p)));
+  const labList = lab.filter((l) => sub.length === 0 || sub.includes(l.kind));
+  const matches = (p: BrowserPost) => (main === 'note' ? p.areas.some((a) => sub.includes(a)) : sub.includes(p.topic));
+  const list = posts.filter((p) => (!main || p.category === main) && (!main || sub.length === 0 || matches(p)));
 
   const onMain = (value: string) => {
     const next = value === main ? null : (value as Category);
@@ -96,7 +97,9 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
     history.replaceState(null, '', next ? `#${next}` : window.location.pathname);
   };
 
-  const heading = main ? `${CATEGORY_LABEL[main]}${sub ? ` / ${sub}` : ''}` : '전체 글';
+  // 칩을 많이 고르면 제목이 길어지므로 두 개까지만 적고 나머지는 '외 n'
+  const picked = sub.length > 2 ? `${sub.slice(0, 2).join(' · ')} 외 ${sub.length - 2}` : sub.join(' · ');
+  const heading = main ? `${CATEGORY_LABEL[main]}${picked ? ` / ${picked}` : ''}` : '전체 글';
 
   return (
     <>
@@ -104,7 +107,7 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
         <LiquidTabs items={mainItems} value={main} onChange={onMain} label="큰 분류" drip />
         <div className={`filters__sub${main ? ' is-open' : ''}`} inert={!main}>
           <div className="filters__sub-inner">
-            <LiquidTabs key={shown} items={subItems} value={sub} onChange={setSub} label="주제" size="sm" />
+            <LiquidChips key={shown} items={subItems} values={sub} onChange={setSub} label="주제 (여러 개 선택)" />
           </div>
         </div>
       </div>
@@ -117,9 +120,9 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
           <span className="mono">{main === 'lab' ? `${labList.length}개` : `${list.length}편`}</span>
         </div>
         {main === 'lab' ? (
-          <LabGrid key={`lab-${sub}`} items={labList} />
+          <LabGrid key={`lab-${sub.join()}`} items={labList} />
         ) : (
-          <ul className="rows" key={`${main}-${sub}`}>
+          <ul className="rows" key={`${main}-${sub.join()}`}>
             {list.map((p, i) => (
               <PostRow key={p.slug} post={p} index={i} />
             ))}

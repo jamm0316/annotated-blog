@@ -671,6 +671,15 @@ button:active:not(:disabled) {
   70% { transform: scaleY(1.06); }
   100% { transform: none; }
 }
+/* 여러 개 고르는 칩의 물방울은 제자리에서 맺히고 꺼진다. 자리를 옮겨 다니지 않으므로 위치는 바로 잡는다 */
+.liquid__blob--chip {
+  transition:
+    transform var(--dur-liquid) var(--ease-liquid),
+    opacity var(--dur-fast) ease-out;
+}
+.liquid__blob--chip[data-hidden] {
+  transition-duration: var(--dur-fast), var(--dur-fast);
+}
 .liquid__blob.is-squish {
   animation: squish var(--dur-liquid) var(--ease-out);
 }

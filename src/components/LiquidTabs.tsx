@@ -98,3 +98,77 @@ export function LiquidTabs({ items, value, onChange, label, size = 'lg', drip = 
     </div>
   );
 }
+
+type ChipsProps = {
+  items: TabItem[];
+  /** 고른 값들. 비어 있으면 '전체'(value '')가 눌린 상태다. */
+  values: string[];
+  onChange: (values: string[]) => void;
+  label: string;
+};
+
+// 여러 개를 함께 고르는 칩. 누를 때마다 그 칩 뒤에 물방울이 맺히고(살짝 지나쳤다 돌아옴), 다시 누르면 꺼진다.
+// 나란히 고른 칩의 물방울은 goo 필터 때문에 서로 엉겨 붙는다. '전체'를 누르면 고른 것을 모두 비운다.
+export function LiquidChips({ items, values, onChange, label }: ChipsProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const blobs = useRef(new Map<string, HTMLSpanElement>());
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const place = () => {
+      root.querySelectorAll<HTMLButtonElement>('.liquid__tab').forEach((tab) => {
+        const blob = blobs.current.get(tab.dataset.value ?? '');
+        if (!blob) return;
+        blob.style.left = `${tab.offsetLeft}px`;
+        blob.style.top = `${tab.offsetTop}px`;
+        blob.style.width = `${tab.offsetWidth}px`;
+        blob.style.height = `${tab.offsetHeight}px`;
+        if (tab.getAttribute('aria-pressed') === 'true') delete blob.dataset.hidden;
+        else blob.dataset.hidden = '';
+      });
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [items, values]);
+
+  const pressed = (v: string) => (v === '' ? values.length === 0 : values.includes(v));
+  const toggle = (v: string) => {
+    if (v === '') return onChange([]);
+    onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+  };
+
+  return (
+    <div ref={rootRef} className="liquid liquid--sm" role="group" aria-label={label}>
+      <span className="liquid__goo" aria-hidden>
+        {items.map((item) => (
+          <span
+            key={item.value}
+            ref={(el) => {
+              if (el) blobs.current.set(item.value, el);
+              else blobs.current.delete(item.value);
+            }}
+            className="liquid__blob liquid__blob--chip"
+            data-hidden=""
+          />
+        ))}
+      </span>
+      {items.map((item, i) => (
+        <button
+          key={item.value}
+          type="button"
+          className="liquid__tab mono"
+          data-value={item.value}
+          aria-pressed={pressed(item.value)}
+          style={{ '--i': i } as CSSProperties}
+          onClick={() => toggle(item.value)}
+        >
+          {item.label}
+          {item.count !== undefined && <span className="liquid__count">{item.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
