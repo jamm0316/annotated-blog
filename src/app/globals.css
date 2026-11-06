@@ -1776,6 +1776,24 @@ button:active:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 자연어로 묻기 줄과 AI 가 고른 글 */
+.search__ask {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-top: 4px;
+  border-top: 1px dashed var(--line-strong);
+  border-radius: 0 0 4px 4px;
+}
+.search__ask-label {
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.search__pick .search__reason {
+  grid-column: 2 / -1;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-70);
+}
 .search__empty {
   padding: 16px 10px;
   font-size: 13px;
@@ -1804,6 +1822,16 @@ button:active:not(:disabled) {
   }
   .search__date {
     grid-column: 1 / -1;
+  }
+  .search__pick .search__reason {
+    grid-column: 1 / -1;
+  }
+  .search__ask {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .search__ask .search__title {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
   .search__hint span:last-child {
     display: none;

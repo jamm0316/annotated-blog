@@ -6,6 +6,10 @@ import { createCssVariablesTheme } from 'shiki';
 // cacheComponents 는 쓰지 않는다. 켜면 공개 글이 0편일 때 generateStaticParams 가 빈 배열이라 빌드가 실패한다.
 const nextConfig: NextConfig = {
   pageExtensions: ['ts', 'tsx', 'mdx'],
+  // 자연어 검색 API 는 요청 때 글 목록을 읽으므로 글 파일을 함수에 함께 싣는다
+  outputFileTracingIncludes: {
+    '/api/ask': ['./content/posts/**/*.mdx'],
+  },
 };
 
 // Turbopack 은 플러그인 옵션을 직렬화해서 넘기므로 플러그인을 import 하지 않고 이름 문자열로 적는다.

@@ -100,5 +100,6 @@ draft: false
 - 목록 한 줄은 로그 한 줄처럼: 날짜 · `[주제]` · 제목 · 배지. 본문 끝 표시는 `EOF`.
 - 움직임: 반응 150ms, 상태 변화 200ms, 입장 640ms, 물방울 480ms(`--ease-liquid`, 살짝 지나쳤다 돌아옴). 반복 애니메이션 금지(커서 막대도 깜빡이지 않는다). `prefers-reduced-motion` 을 지킨다.
 - 물방울 인터랙션: 큰 분류 탭은 하나만 고르는 `LiquidTabs`, 2단계 칩은 여러 개를 함께 고르는 `LiquidChips`(고른 것 중 하나라도 맞으면 보임, '전체'는 모두 해제)(goo 필터 `#goo` 는 `Droplets` 가 깐다), 누른 자리 물방울과 행·카드의 차오르는 바탕은 `Droplets` 가 전역으로 붙인다. 새 요소에 넣으려면 `Droplets.tsx` 의 선택자에 더한다.
+- 검색 결과 맨 아래 '자연어로 묻기' 줄을 고르면 `/api/ask` 가 글 목록과 질문을 Claude Haiku 에 넘겨 관련 글을 고른다. API 키는 없다: Claude Console 의 Workload Identity Federation 에 Vercel 을 OIDC 발급자로 등록해 Vercel 토큰으로 인증하고, 비용은 Console 의 `evan-log` 워크스페이스 월 한도 안에서만 나간다. 이 API 에 키를 새로 넣지 않는다.
 - 키보드: `/` 나 ⌘K(Ctrl+K)는 어디서든 `$ grep` 검색(`SearchPalette`, 제목·주제·칩·태그·요약·설명에서 찾는다)을 열고, 첫 화면 목록은 `j`/`k` 로 한 줄씩 오르내리며 `Enter` 로 연다.
 - 목록 행에 손을 올리면 본문 앞부분(`excerpt`, `src/lib/posts.ts` 에서 뽑음)이 타이핑되고 끝에 `… 더보기` 가 붙는다. 첫 화면 문구는 "백엔드 개발자 Evan 의 기술 노트와 독후감" 한 줄뿐이다.
