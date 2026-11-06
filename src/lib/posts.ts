@@ -1,3 +1,6 @@
+// @MX:NOTE: 글 MDX 를 읽어 frontmatter 를 검증한 PostMeta 로 만들고, 목록·단건·이어서 읽기를 돌려준다
+// @MX:SPEC: .claude/docs/domains/posts.md
+
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
@@ -10,6 +13,8 @@ export type Category = 'note' | 'book';
 /** 박물관에서 글을 다 읽고 나오면 부엉이가 내는 한 문제. 보기 셋, answer 는 0부터 센 정답 위치 */
 export type Quiz = { q: string; choices: string[]; answer: number };
 
+// @MX:ANCHOR: 글 메타의 공용 모양. 필드를 바꾸면 읽는 쪽을 함께 고친다
+// @MX:REASON: app/page.tsx(browse)·lib/search.ts·lib/museum.ts·PostArticle·posts/[slug]/page.tsx 가 필드를 읽는다
 export type PostMeta = {
   slug: string;
   title: string;
@@ -99,6 +104,7 @@ function quizOf(slug: string, raw: unknown): Quiz | null {
   return { q: String(q.q), choices, answer };
 }
 
+// @MX:NOTE: 여기와 shortLabel·quizOf·area 검사의 throw 가 frontmatter 오류를 빌드에서 멈추는 유일한 관문이다
 function readPost(slug: string): PostMeta | null {
   const file = path.join(CONTENT_DIR, slug, 'index.mdx');
   if (!fs.existsSync(file)) return null;
@@ -134,6 +140,10 @@ function readPost(slug: string): PostMeta | null {
   };
 }
 
+// @MX:ANCHOR: 공개 글 목록의 단일 출처
+// @MX:REASON: app/page.tsx·posts/[slug]/page.tsx·museum/@reader 가로채기 라우트·lib/search.ts·lib/museum.ts 가 부른다
+// @MX:WARN: 초안 노출 조건(showDrafts)이 아래 getPost 에도 같은 식으로 있다
+// @MX:REASON: 한쪽만 바꾸면 목록에는 없는 초안이 주소로 열리거나, 목록에 있는 글이 404 가 된다
 /** 최신순. 초안은 로컬과 Vercel 미리보기에서만 보인다. */
 export function getPosts(category?: Category): PostMeta[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];

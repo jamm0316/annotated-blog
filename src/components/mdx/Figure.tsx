@@ -1,3 +1,6 @@
+// @MX:NOTE: 글 안 그림과 캡션. ZoomImage 로 그린다
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import type { ReactNode } from 'react';
 import { ZoomImage } from './ZoomImage';
 

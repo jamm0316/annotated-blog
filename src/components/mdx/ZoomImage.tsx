@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: next/image 그림. 누르면 dialog 로 원본 크기까지 크게 본다
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import Image from 'next/image';
 import { useRef } from 'react';
 
@@ -10,6 +13,7 @@ type Props = { src: string; alt: string; width: number; height: number };
 export function ZoomImage({ src, alt, width, height }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
 
+// @MX:NOTE: 본문 그림 sizes 의 680px 은 globals.css 의 --prose 폭, 760px 은 좁은 화면 경계와 맞춘 값이다
   return (
     <>
       <button type="button" className="zoom__open" aria-label={`그림 크게 보기: ${alt}`} onClick={() => dialog.current?.showModal()}>

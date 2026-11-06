@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 본문 끝 EOF 표시. 화면에 한 번 들어오면 선을 그린다
+// @MX:SPEC: .claude/docs/domains/posts.md
+
 import { useEffect, useRef, useState } from 'react';
 
 // 본문 끝 표시. 화면에 들어오면 점이 가로선으로 늘어나고 EOF 가 선 끝에 놓인다.

@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: MDX 의 pre 를 대신해 언어 이름과 복사 버튼을 단다
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import { useRef, useState, type ComponentProps } from 'react';
 
 const LABELS: Record<string, string> = {

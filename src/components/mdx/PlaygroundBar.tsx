@@ -1,3 +1,6 @@
+// @MX:NOTE: Playground 공용 막대. 한도 안은 칠하고 넘친 만큼은 빗금
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 type Props = {
   /** 막대에 올릴 값 */
   value: number;

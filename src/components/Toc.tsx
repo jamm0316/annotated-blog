@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 글 본문 소제목 목차. 지금 읽는 소제목과 읽은 비율을 표시한다
+// @MX:SPEC: .claude/docs/domains/posts.md
+
 import { useEffect, useState } from 'react';
 
 type Item = { id: string; label: string; major: boolean };
@@ -12,6 +15,8 @@ export function Toc() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    // @MX:WARN: PostArticle 의 [data-prose] 와 rehype-slug 가 단 h2/h3 id 에 기댄다
+    // @MX:REASON: 둘 중 하나가 없으면 목차가 빈 채로 그려지지 않는다. data-current 의 모양은 globals.css 에 있다
     const prose = document.querySelector<HTMLElement>('[data-prose]');
     if (!prose) return;
     const heads = Array.from(prose.querySelectorAll<HTMLElement>('h2[id], h3[id]'));

@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리를 바꿔 보는 그림 (stream-pipeline-download-oom)
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import { useState } from 'react';
 
 type Props = {

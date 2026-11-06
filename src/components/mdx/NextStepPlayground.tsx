@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 1차 인증 뒤 다음 단계 판정을 따라가 보는 그림 (two-factor-auth-design)
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import { useState } from 'react';
 
 // 2단계 인증 판정 서비스가 1차 인증 뒤 돌려줄 다음 단계를 독자가 값을 바꿔 가며 따라가 보는 그림 (two-factor-auth-design).
@@ -34,6 +37,8 @@ const START: Values = {
 };
 
 // 흐름도를 위에서부터 따라 내려가며 거친 질문과 도착한 단계를 돌려준다
+// @MX:WARN: 분기 순서와 도착 단계 이름은 흐름도 public/posts/two-factor-auth-design/08-next-step.png 와 짝이다
+// @MX:REASON: 한쪽만 바꾸면 글의 그림과 이 판정이 다른 답을 낸다
 function resolve(v: Values): { asked: Key[]; step: string } {
   const asked: Key[] = ['policy'];
   if (v.policy === 'OFF') return { asked, step: '정식 토큰 발급' };

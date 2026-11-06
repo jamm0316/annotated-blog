@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 다 읽으면 바닥에서 올라오는 이어서 읽기 카드
+// @MX:SPEC: .claude/docs/domains/posts.md
+
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -18,6 +21,7 @@ export function NextNav({ items }: { items: Item[] }) {
       const root = document.documentElement;
       const shown = window.scrollY + window.innerHeight >= root.scrollHeight - 24;
       setState(shown ? 'in' : 'waiting');
+      // @MX:NOTE: globals.css 의 :root[data-reading-done] 가 목차·머리·본문을 흐린다. 언마운트 때 지운다
       document.documentElement.toggleAttribute('data-reading-done', shown);
     };
     onScroll();

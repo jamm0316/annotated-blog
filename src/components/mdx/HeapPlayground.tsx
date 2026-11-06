@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 측정 피크 힙을 건수에 비례해 늘려 힙 한도와 비교하는 그림 (ttlb-ttfb-download-api-bottleneck)
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import { useState } from 'react';
 import { PlaygroundBar } from './PlaygroundBar';
 

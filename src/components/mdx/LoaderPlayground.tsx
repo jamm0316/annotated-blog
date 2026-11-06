@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 동시 로더 수 ≒ T × R 과 커넥션 풀을 독자가 바꿔 보는 그림 (cache-stampede)
+// @MX:SPEC: .claude/docs/domains/playgrounds.md
+
 import { useState } from 'react';
 import { PlaygroundBar } from './PlaygroundBar';
 
