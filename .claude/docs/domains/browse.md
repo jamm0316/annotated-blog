@@ -7,6 +7,7 @@
 - `src/app/page.tsx` — 첫 화면. 글 목록을 클라이언트용 필드로 줄여 `PostBrowser` 에 넘긴다
 - `src/components/PostBrowser.tsx` — 탭·칩 필터, 주소 해시 동기화, `j`/`k` 키, 목록 행(`PostRow`)과 미리보기 타이핑
 - `src/components/LiquidTabs.tsx` — `LiquidTabs`(하나만 고르는 탭), `LiquidChips`(여러 개 고르는 칩)
+- `src/components/MuseumDoor.tsx` — 히어로 오른쪽 박물관 입구(`/museum` 링크). 진열대 수는 `getExhibits().length`
 - `src/components/Droplets.tsx` — 누른 자리 물방울, 행·카드의 차오르는 바탕, goo 필터(`#goo`)
 - `src/components/HashLink.tsx` — 머리말의 `/#note` 같은 링크가 첫 화면에서 `hashchange` 를 일으키게 한다
 - 스타일: `src/app/globals.css` 의 `/* 목록 */`, `/* 필터 */`, `/* 물방울 탭 */`, `/* 누른 자리에서 번지는 물방울 */`, `/* 목록 머리의 j/k 키 */` 섹션 (파일 자체는 shell 소속)
@@ -30,7 +31,7 @@
 ### 비즈니스 규칙
 
 - **목록에 넘기는 필드**: `page.tsx` 가 `getPosts()` 결과에서 위 12개 필드만 골라 넘긴다. 본문은 넘기지 않는다. 글이 0편이면 `첫 글을 준비하고 있습니다.` 만 보인다.
-- **첫 화면 문구**: `evan.log` 워드마크와 `백엔드 개발자 Evan 의 기술 노트와 독후감` 한 줄뿐.
+- **첫 화면 문구**: `evan.log` 워드마크와 `백엔드 개발자 Evan 의 기술 노트와 독후감` 한 줄뿐. 그 오른쪽(760px 이하에서는 아래)에 박물관 입구 `MuseumDoor` 하나를 둔다: 머리말 `모드` 메뉴 안에 숨은 박물관 모드를 첫 화면에서 보이게 하려는 것이다. 이름표 `박물관 모드` · `걸어서 둘러보기` · `진열대 N개 · 3D 기록관`(N 은 실제 진열품 수). 건물 아이콘은 좁은 폰 모드 버튼과 같은 그림이고, 강조색은 화살표와 손 올렸을 때 테두리에만 쓴다.
 - **큰 분류 탭**: 고른 탭을 다시 누르면 해제(`main = null`, '전체 글'). 탭 개수는 분류별 글 수, 연구실은 `lab.length`.
 - **2단계 칩**:
   - 기술 노트: `AREAS` 순서대로, 글이 1편 이상인 역량만. 맞춤 조건은 `p.areas` 중 하나라도 고른 칩에 있으면.
@@ -90,8 +91,8 @@ export function HashLink(props: { href: `/#${string}`; className?: string; child
 ### 선택자·DOM 계약
 
 - **Droplets 의 선택자** (새 요소에 물방울을 붙이려면 여기에 더한다):
-  - 누른 자리 물방울 `RIPPLE`: `.row, .lab-card, .liquid__tab, .icon-btn, .search-trigger, .next-nav__item, .code__bar button, .playground__legend button`
-  - 차오르는 바탕 `FILL`(`--px`/`--py` 를 넣는다): `.row, .next-nav__item, .lab-card`
+  - 누른 자리 물방울 `RIPPLE`: `.row, .lab-card, .liquid__tab, .icon-btn, .search-trigger, .next-nav__item, .code__bar button, .playground__legend button, .museum-door`
+  - 차오르는 바탕 `FILL`(`--px`/`--py` 를 넣는다): `.row, .next-nav__item, .lab-card, .museum-door`
   - 대상 요소는 CSS 에서 `position: relative; overflow: hidden` 이어야 물방울(`.droplet`)이 안에 갇힌다. FILL 대상은 `::before` 에서 `clip-path: circle(… at var(--px) var(--py))` 로 쓴다.
 - **goo 필터 id `#goo`**: Droplets 가 깔고 `globals.css` 의 `.liquid__goo { filter: url(#goo) }` 가 쓴다. Droplets 가 없는 화면에서는 물방울 가장자리가 엉기지 않는다.
 - **LiquidTabs/Chips DOM**: 고른 상태는 `button[aria-pressed="true"]`, 칩은 `data-value`, 물방울 숨김은 `data-hidden`, 방향은 `data-dir`, 애니메이션 재시작은 `.is-squish`·`.is-falling` 클래스.
@@ -107,6 +108,7 @@ export function HashLink(props: { href: `/#${string}`; className?: string; child
 | --- | --- | --- |
 | posts | browse → posts | `page.tsx` 가 `getPosts()` 를 부른다. `PostBrowser` 가 `AREAS`(`src/lib/areas.ts`)로 칩 순서를 정한다. 행은 `/posts/<slug>` 로 링크 |
 | lab | browse → lab | `page.tsx` 가 `LAB` 을, `PostBrowser` 가 `LabItem` 타입과 `LabGrid` 를 쓴다 |
+| museum | browse → museum | `page.tsx` 가 `getExhibits()`(`src/lib/museum.ts`)로 진열대 수를 세어 `MuseumDoor` 에 넘기고, 입구는 `/museum` 으로 간다 |
 | shell | shell → browse | `layout.tsx` 가 `Droplets` 와 `HashLink`(`/#note`·`/#book`·`/#lab`)를 그린다. 스타일·토큰은 `globals.css` |
 | search | 간접 | `.search-trigger` 가 Droplets 의 RIPPLE 에 들어 있다. 검색 팔레트가 열리면(`dialog[open]`) `j`/`k` 를 쉰다 |
 | posts / playgrounds | 간접 | `.next-nav__item`(이어서 읽기), `.code__bar button`·`.playground__legend button` 이 Droplets 선택자에 들어 있다 |

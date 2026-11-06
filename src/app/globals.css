@@ -476,7 +476,76 @@ button:active:not(:disabled) {
 /* @MX:SPEC: .claude/docs/domains/browse.md */
 /* 첫 화면 */
 .hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
   padding: 120px 0 40px;
+}
+.hero__intro {
+  min-width: 0;
+}
+/* 박물관 입구. 머리말 모드 메뉴 안에 숨어 있던 박물관 모드를 첫 화면 오른쪽에 문패처럼 둔다.
+   색은 바탕·글자·강조 세 가지 그대로: 테두리·글자는 사이트 토큰, 강조는 화살표 하나 */
+.museum-door {
+  flex: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  width: 280px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation: rise var(--dur-slow) var(--ease-out) var(--dur-fast) both;
+  transition: border-color var(--dur-instant) ease-out;
+}
+/* 목록 행과 같은 차오르는 바탕(Droplets FILL) */
+.museum-door::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--bg-raised);
+  clip-path: circle(0 at var(--px, 50%) var(--py, 50%));
+  transition: clip-path var(--dur-slow) var(--ease-out);
+}
+.museum-door:is(:hover, :focus-visible)::before {
+  clip-path: circle(150% at var(--px, 50%) var(--py, 50%));
+}
+.museum-door:is(:hover, :focus-visible) {
+  border-color: var(--accent);
+}
+.museum-door__icon {
+  color: var(--ink);
+}
+.museum-door__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.5;
+}
+.museum-door__label,
+.museum-door__note {
+  font-size: 12px;
+  color: var(--ink-70);
+}
+.museum-door__title {
+  font-size: 17px;
+  font-weight: 500;
+}
+.museum-door__arrow {
+  font-size: 16px;
+  color: var(--accent);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.museum-door:is(:hover, :focus-visible) .museum-door__arrow {
+  transform: translateX(4px);
 }
 .hero__word {
   display: flex;
@@ -2048,7 +2117,13 @@ button:active:not(:disabled) {
     font-size: 17px;
   }
   .hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 28px;
     padding: 72px 0 32px;
+  }
+  .museum-door {
+    width: auto;
   }
   .article {
     padding-top: 56px;
@@ -2090,6 +2165,7 @@ button:active:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   .hero__word,
   .hero__sub,
+  .museum-door,
   .article__title {
     animation: none;
   }

@@ -9,8 +9,8 @@ import { useEffect } from 'react';
 // 목록 행·카드는 손이 들어온 자리를 --px/--py 로 넘겨, 바탕이 그 점에서부터 물처럼 차오르게 한다.
 // @MX:WARN: 여기 선택자를 더할 때는 globals.css 에서 그 요소에 position: relative; overflow: hidden 도 줘야 한다
 // @MX:REASON: .droplet 은 대상 안에 absolute 로 붙어서, 둘이 없으면 물방울이 요소 밖으로 번진다. FILL 대상은 ::before 의 clip-path 가 --px/--py 를 써야 보인다
-const RIPPLE = '.row, .lab-card, .liquid__tab, .icon-btn, .search-trigger, .next-nav__item, .code__bar button, .playground__legend button';
-const FILL = '.row, .next-nav__item, .lab-card';
+const RIPPLE = '.row, .lab-card, .liquid__tab, .icon-btn, .search-trigger, .next-nav__item, .code__bar button, .playground__legend button, .museum-door';
+const FILL = '.row, .next-nav__item, .lab-card, .museum-door';
 
 export function Droplets() {
   useEffect(() => {
