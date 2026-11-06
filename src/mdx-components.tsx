@@ -5,6 +5,7 @@ import { CodeBlock } from '@/components/mdx/CodeBlock';
 import { Figure } from '@/components/mdx/Figure';
 import { HeapPlayground } from '@/components/mdx/HeapPlayground';
 import { LoaderPlayground } from '@/components/mdx/LoaderPlayground';
+import { NextStepPlayground } from '@/components/mdx/NextStepPlayground';
 
 // 글 안에서 import 없이 쓰는 컴포넌트를 여기에 등록한다.
 // pre·table 은 마크다운이 만든 태그를 바꿔 끼운다.
@@ -13,6 +14,7 @@ const components: MDXComponents = {
   Figure,
   HeapPlayground,
   LoaderPlayground,
+  NextStepPlayground,
   pre: CodeBlock,
   table: (props: ComponentProps<'table'>) => (
     <div className="table-wrap">

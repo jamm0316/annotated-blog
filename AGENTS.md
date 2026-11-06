@@ -70,10 +70,11 @@ draft: false
 
 | 컴포넌트 | 용도 |
 | --- | --- |
-| `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP |
+| `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP. 누르면 화면 가득 크게 본다 |
 | `<LoaderPlayground t r pool caption />` | 동시 로더 수 ≒ T × R 을 독자가 바꿔 보는 그림 (`cache-stampede`) |
 | `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
 | `<BatchPlayground n batch batchMb caption />` | 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리 (`stream-pipeline-download-oom`) |
+| `<NextStepPlayground caption />` | 1차 인증 뒤 판정 서비스가 돌려줄 다음 단계. 분기는 글의 흐름도(`08-next-step.png`)와 같다 (`two-factor-auth-design`) |
 
 - 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
 - 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.
@@ -99,4 +100,5 @@ draft: false
 - 목록 한 줄은 로그 한 줄처럼: 날짜 · `[주제]` · 제목 · 배지. 본문 끝 표시는 `EOF`.
 - 움직임: 반응 150ms, 상태 변화 200ms, 입장 640ms, 물방울 480ms(`--ease-liquid`, 살짝 지나쳤다 돌아옴). 반복 애니메이션 금지(커서 막대도 깜빡이지 않는다). `prefers-reduced-motion` 을 지킨다.
 - 물방울 인터랙션: 큰 분류 탭은 하나만 고르는 `LiquidTabs`, 2단계 칩은 여러 개를 함께 고르는 `LiquidChips`(고른 것 중 하나라도 맞으면 보임, '전체'는 모두 해제)(goo 필터 `#goo` 는 `Droplets` 가 깐다), 누른 자리 물방울과 행·카드의 차오르는 바탕은 `Droplets` 가 전역으로 붙인다. 새 요소에 넣으려면 `Droplets.tsx` 의 선택자에 더한다.
+- 키보드: `/` 나 ⌘K(Ctrl+K)는 어디서든 `$ grep` 검색(`SearchPalette`, 제목·주제·칩·태그·요약·설명에서 찾는다)을 열고, 첫 화면 목록은 `j`/`k` 로 한 줄씩 오르내리며 `Enter` 로 연다.
 - 목록 행에 손을 올리면 본문 앞부분(`excerpt`, `src/lib/posts.ts` 에서 뽑음)이 타이핑되고 끝에 `… 더보기` 가 붙는다. 첫 화면 문구는 "백엔드 개발자 Evan 의 기술 노트와 독후감" 한 줄뿐이다.
