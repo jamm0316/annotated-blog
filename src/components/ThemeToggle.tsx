@@ -5,8 +5,9 @@
 // 움직임을 줄인 환경에서는 바로 바뀐다.
 const DROPS = 18;
 
-export function ThemeToggle() {
-  const toggle = () => {
+// 좁은 폰에서는 이 버튼을 머리말에서 숨기고 모드 메뉴(ModeMenu)에서 같은 함수를 부른다
+export function toggleTheme() {
+  {
     const root = document.documentElement;
     const next = root.dataset.theme === 'light' ? 'dark' : 'light';
     const apply = () => {
@@ -43,10 +44,12 @@ export function ThemeToggle() {
       root.removeAttribute('data-theme-switching');
       root.removeAttribute('data-theme-rain');
     });
-  };
+  }
+}
 
+export function ThemeToggle() {
   return (
-    <button type="button" className="icon-btn" aria-label="테마 전환" onClick={toggle}>
+    <button type="button" className="icon-btn theme-btn" aria-label="테마 전환" onClick={toggleTheme}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
         <circle cx="12" cy="12" r="8" />
         <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />

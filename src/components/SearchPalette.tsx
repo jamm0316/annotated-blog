@@ -148,7 +148,8 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
         e.preventDefault();
         if (dialog.current?.open) close();
         else open();
-      } else if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target)) {
+        // 박물관에서는 '/' 가 부엉이를 부른다(⌘K 는 그대로 검색)
+      } else if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target) && !window.location.pathname.startsWith('/museum')) {
         e.preventDefault();
         open();
       }

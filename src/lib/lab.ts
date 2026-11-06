@@ -4,6 +4,8 @@
 export type LabItem = {
   repo: string;
   title: string;
+  /** 박물관 진열대 이름표. 10자 이내 */
+  short: string;
   /** 2단계 칩으로 묶는 종류 */
   kind: string;
   /** 한 줄 미끼. 카드 제목 아래에 크게 */
@@ -22,6 +24,7 @@ const pages = (repo: string, path = '') => `https://jamm0316.github.io/${repo}/$
 export const LAB: LabItem[] = [
   {
     repo: 'travel_plan_gapyeong',
+    short: '환갑 여행 앱',
     title: '춘천 환갑여행',
     kind: '기록',
     pitch: '예순 번의 여름을 지나온 두 분께.',
@@ -33,6 +36,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'EIPSC',
+    short: '정처기 카드',
     title: '정처기 실기 카드',
     kind: '도구',
     pitch: '틀린 문제만 다섯 번씩, 폰에서.',
@@ -44,6 +48,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'teammate-world',
+    short: '팀메이트 월드',
     title: '팀메이트 월드',
     kind: '팀메이트',
     pitch: '1~4기가 한 화면에서 줄다리기를 한다.',
@@ -55,6 +60,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'poketmon-face',
+    short: '닮은 포켓몬',
     title: '닮은 포켓몬 찾기',
     kind: '놀이',
     pitch: '내 얼굴은 어떤 포켓몬일까?',
@@ -66,6 +72,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'teammate-team-building-intro',
+    short: '팀빌딩 소개',
     title: '팀메이트 팀빌딩 소개',
     kind: '팀메이트',
     pitch: '이론을 읽고, 실무에 적용한다.',
@@ -77,6 +84,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'pixel-agents',
+    short: '도트 오피스',
     title: 'Pixel Agents',
     kind: '도구',
     pitch: '내 Claude Code 에이전트들이 도트 오피스에서 일한다.',
@@ -87,6 +95,7 @@ export const LAB: LabItem[] = [
   },
   {
     repo: 'Breathe',
+    short: '숨 고르기',
     title: '숨 고르기',
     kind: '도구',
     pitch: '원이 커지면 들이쉬고, 작아지면 내쉰다.',

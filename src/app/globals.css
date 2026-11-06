@@ -2141,3 +2141,315 @@ button:active:not(:disabled) {
     animation: none;
   }
 }
+
+/* ── 모드 고르기 (머리말 오른쪽 끝) ── */
+.mode {
+  position: relative;
+}
+.mode__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--dur-instant) ease-out;
+}
+.mode__label {
+  color: var(--ink-70);
+}
+@media (hover: hover) {
+  .mode__btn:hover {
+    border-color: var(--accent);
+  }
+}
+.mode__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 168px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.mode__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.mode__item small {
+  font-size: 11px;
+  color: var(--ink-70);
+}
+.mode__item[aria-current='page'] {
+  color: var(--accent);
+}
+.mode__item:hover,
+.mode__item:focus-visible {
+  background: var(--line);
+  outline: none;
+}
+@media (max-width: 760px) {
+  .mode__label {
+    display: none;
+  }
+  .mode__btn {
+    padding: 0 8px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 박물관 모드 ──
+   이 모드만 세 가지 색 규칙에서 빠진다. 장난감 같은 3D 기록관이라 나무·풀·크림 색이 필요하다.
+   색은 아래 --m-* 토큰으로만 쓰고, 사이트의 다른 화면에는 쓰지 않는다. */
+.museum-page {
+  --m-page: #f7e7cf;
+  --m-ink: #3a2a20;
+  --m-accent: #ff7a1a;
+  --m-bubble: #fff8ec;
+  --m-navy: #2b3a67;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+.museum {
+  position: relative;
+  height: max(420px, calc(100dvh - 140px));
+  overflow: hidden;
+  border-radius: 18px;
+  border: 3px solid var(--m-ink);
+  background: var(--m-page);
+  color: var(--m-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+.museum__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: 13px;
+}
+.museum__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  touch-action: manipulation;
+  cursor: pointer;
+  outline: none;
+}
+.museum__tag,
+.museum__near {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.museum__tag {
+  translate: -50% -50%;
+  padding: 3px 12px 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--m-bubble);
+  background: var(--m-navy);
+  border-radius: 999px;
+  box-shadow: 0 3px 0 rgb(58 42 32 / 0.25);
+}
+.museum__near {
+  translate: -50% -100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 12px 4px;
+  background: var(--m-bubble);
+  border: 2px solid var(--m-ink);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 rgb(58 42 32 / 0.22);
+}
+.museum__near strong {
+  font-size: 15px;
+}
+.museum__near span {
+  font-size: 11px;
+  color: var(--m-accent);
+  font-weight: 600;
+}
+.museum__talk {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  translate: -50% 0;
+  width: min(680px, calc(100% - 28px));
+  box-sizing: border-box;
+  padding: 22px 24px 18px;
+  font-size: 16px;
+  line-height: 1.7;
+  background: var(--m-bubble);
+  border: 3px solid var(--m-ink);
+  border-radius: 26px;
+  box-shadow: 0 6px 0 rgb(58 42 32 / 0.22);
+}
+.museum__name {
+  position: absolute;
+  top: -16px;
+  left: 22px;
+  padding: 1px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--m-bubble);
+  background: var(--m-accent);
+  border: 3px solid var(--m-ink);
+  border-radius: 999px;
+}
+.museum__text {
+  min-height: 3.4em;
+  white-space: pre-line;
+}
+.museum__more {
+  position: absolute;
+  right: 22px;
+  bottom: 8px;
+  font-size: 14px;
+  color: var(--m-accent);
+}
+.museum__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.museum__choices:empty {
+  display: none;
+}
+.museum__choice {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+  padding: 4px 14px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--m-ink);
+  background: #fff;
+  border: 2px solid var(--m-ink);
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) ease-out,
+    color var(--dur-instant) ease-out;
+}
+.museum__choice small {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+}
+.museum__choice:hover,
+.museum__choice:focus-visible {
+  color: #fff;
+  background: var(--m-accent);
+  outline: none;
+}
+.museum__ask {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.museum__ask input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--m-ink);
+  background: #fff;
+  border: 2px solid var(--m-ink);
+  border-radius: 16px;
+  outline: none;
+}
+.museum__ask input:focus {
+  border-color: var(--m-accent);
+}
+.museum-page__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-70);
+}
+@media (max-width: 640px) {
+  .museum-page {
+    padding: 8px 8px 12px;
+  }
+  .museum {
+    height: max(440px, calc(100dvh - 120px));
+  }
+  .museum__talk {
+    bottom: 10px;
+    padding: 18px 16px 14px;
+    font-size: 14px;
+    border-radius: 20px;
+  }
+  .museum__tag {
+    font-size: 12px;
+  }
+}
+.mode__icon,
+.mode__theme {
+  display: none;
+}
+button.mode__item {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+/* 좁은 폰에서는 모드를 아이콘 하나로 줄이고, 테마 버튼은 모드 메뉴 안으로 옮겨 머리말을 한 줄로 지킨다 */
+@media (max-width: 460px) {
+  .mode__btn {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .mode__icon {
+    display: block;
+  }
+  .mode__text,
+  .site-nav .theme-btn {
+    display: none;
+  }
+  .mode__theme {
+    display: list-item;
+  }
+}

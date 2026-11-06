@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Analytics } from '@vercel/analytics/next';
 import { Droplets } from '@/components/Droplets';
 import { HashLink } from '@/components/HashLink';
+import { ModeMenu } from '@/components/ModeMenu';
 import { SearchPalette } from '@/components/SearchPalette';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getSearchItems } from '@/lib/search';
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               </HashLink>
               <SearchPalette posts={searchItems} />
               <ThemeToggle />
+              <ModeMenu />
             </nav>
           </div>
         </header>

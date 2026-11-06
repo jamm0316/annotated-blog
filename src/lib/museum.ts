@@ -1,0 +1,73 @@
+import { LAB } from '@/lib/lab';
+import { getPosts } from '@/lib/posts';
+
+// 박물관 모드의 진열품. 글과 연구실 항목에서 자동으로 만든다. 글을 올리면 진열대가 저절로 하나 늘어난다.
+export type PropKind =
+  | 'db'
+  | 'down'
+  | 'phone'
+  | 'shield'
+  | 'scroll'
+  | 'key'
+  | 'bot'
+  | 'branch'
+  | 'leaf'
+  | 'calendar'
+  | 'book'
+  | 'monitor';
+
+export type Exhibit = {
+  /** 검색과 같은 id. 글은 slug, 연구실은 'lab:<repo>' */
+  id: string;
+  /** note = 기술 노트관, book = 로비 책장, lab = 연구실 별관 */
+  hall: 'note' | 'book' | 'lab';
+  /** 가까이 가면 뜨는 이름표(10자 이내) */
+  short: string;
+  title: string;
+  topic: string;
+  date: string;
+  href: string;
+  external: boolean;
+  /** 유리 돔 안에 놓을 소품 */
+  prop: PropKind;
+};
+
+// 주제마다 진열대 소품을 정한다. 없는 주제는 펼친 책
+const PROP_BY_TOPIC: Record<string, PropKind> = {
+  캐시: 'db',
+  '다운로드 API': 'down',
+  '2단계 인증': 'phone',
+  '입력 정제': 'shield',
+  '감사 로그': 'scroll',
+  '권한 모델': 'key',
+  'AI 코딩': 'bot',
+  Git: 'branch',
+  MongoDB: 'leaf',
+  회고: 'calendar',
+};
+
+export function getExhibits(): Exhibit[] {
+  const posts: Exhibit[] = getPosts().map((p) => ({
+    id: p.slug,
+    hall: p.category === 'book' ? 'book' : 'note',
+    short: p.short,
+    title: p.title,
+    topic: p.category === 'book' ? '독후감' : p.topic,
+    date: p.date,
+    href: `/posts/${p.slug}`,
+    external: false,
+    prop: p.category === 'book' ? 'book' : (PROP_BY_TOPIC[p.topic] ?? 'book'),
+  }));
+  const lab: Exhibit[] = LAB.map((item) => ({
+    id: `lab:${item.repo}`,
+    hall: 'lab',
+    short: item.short,
+    title: item.title,
+    topic: '연구실',
+    date: item.date,
+    href: item.url ?? `https://github.com/jamm0316/${item.repo}`,
+    external: true,
+    prop: 'monitor',
+  }));
+  return [...posts, ...lab];
+}

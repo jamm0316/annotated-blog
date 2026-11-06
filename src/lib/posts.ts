@@ -13,6 +13,8 @@ export type PostMeta = {
   description: string;
   category: Category;
   topic: string;
+  /** 박물관 진열대에 다가가면 뜨는 이름표. 10자 이내. 없으면 topic */
+  short: string;
   /** 기술 노트 2단계 칩. JD 역량 이름(src/lib/areas.ts). 한 글이 여럿에 들 수 있다 */
   areas: Area[];
   series: string;
@@ -70,6 +72,16 @@ function excerpt(body: string, max = 150): string {
   return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.·:;]+$/, '');
 }
 
+// 박물관 이름표는 한 줄에 들어가야 하므로 10자를 넘으면 빌드를 멈춘다
+export const SHORT_MAX = 10;
+function shortLabel(slug: string, short: unknown, topic: unknown): string {
+  const text = String(short ?? topic ?? '').trim();
+  if ([...text].length > SHORT_MAX) {
+    throw new Error(`[posts] ${slug}/index.mdx 의 short '${text}' 가 ${SHORT_MAX}자를 넘는다.`);
+  }
+  return text;
+}
+
 function readPost(slug: string): PostMeta | null {
   const file = path.join(CONTENT_DIR, slug, 'index.mdx');
   if (!fs.existsSync(file)) return null;
@@ -85,6 +97,7 @@ function readPost(slug: string): PostMeta | null {
     description: String(data.description ?? ''),
     category: data.category === 'book' ? 'book' : 'note',
     topic: String(data.topic ?? ''),
+    short: shortLabel(slug, data.short, data.topic),
     areas: (Array.isArray(data.area) ? data.area.map(String) : []).filter((a: string): a is Area => {
       if ((AREAS as readonly string[]).includes(a)) return true;
       throw new Error(`[posts] ${slug}/index.mdx 의 area '${a}' 는 src/lib/areas.ts 에 없다.`);
