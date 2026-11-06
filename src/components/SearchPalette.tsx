@@ -55,7 +55,7 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.code === 'KeyK') {
         e.preventDefault();
         if (dialog.current?.open) close();
         else open();

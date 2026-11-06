@@ -79,7 +79,8 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
   // 로그 뷰어처럼 j/k 로 한 줄씩 오르내린다. 행에 초점이 가면 손을 올렸을 때처럼 펼쳐지고, Enter 로 연다.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'j' && e.key !== 'k') return;
+      // 글자(e.key) 대신 자판 위치(e.code)로 본다. 한글 자판이면 같은 키가 'ㅓ'·'ㅏ' 로 들어오기 때문이다.
+      if (e.code !== 'KeyJ' && e.code !== 'KeyK') return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
       const t = e.target;
       if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -88,7 +89,7 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
       if (items.length === 0) return;
       e.preventDefault();
       const at = items.indexOf(document.activeElement as HTMLElement);
-      const next = at < 0 ? 0 : Math.min(items.length - 1, Math.max(0, at + (e.key === 'j' ? 1 : -1)));
+      const next = at < 0 ? 0 : Math.min(items.length - 1, Math.max(0, at + (e.code === 'KeyJ' ? 1 : -1)));
       items[next].focus({ preventScroll: true });
       items[next].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     };
