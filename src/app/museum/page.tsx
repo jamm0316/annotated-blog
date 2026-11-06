@@ -1,3 +1,5 @@
+// @MX:NOTE: /museum 페이지. 진열품을 서버에서 만들어 Museum 에 넘기고 키 안내 줄을 둔다
+// @MX:SPEC: .claude/docs/domains/museum.md
 import type { Metadata } from 'next';
 import { Museum } from '@/components/museum/Museum';
 import { getExhibits } from '@/lib/museum';

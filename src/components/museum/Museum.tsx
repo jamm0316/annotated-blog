@@ -1,4 +1,6 @@
 'use client';
+// @MX:NOTE: 박물관 클라이언트 진입점. engine 을 동적 import 해 붙이고 ask(/api/ask)·open(이동)을 넘긴다
+// @MX:SPEC: .claude/docs/domains/museum.md
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
@@ -31,6 +33,8 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
         },
         open: (ex) => {
           if (ex.external) window.open(ex.href, '_blank', 'noopener,noreferrer');
+          // @MX:WARN: ?from=museum 을 빼면 첫 화면이 prefetch 한 글 캐시를 재사용해 두루마리 대신 글 페이지로 넘어간다
+          // @MX:REASON: Vercel 의 prerender RSC 응답 Vary 에 Next-Url 이 없어 가로채기 없는 캐시가 박물관에서도 쓰였다(실제 겪은 버그)
           // 첫 화면 목록이 미리 받아 둔 /posts/<slug> 를 피하려고 박물관 전용 쿼리를 붙인다.
           // Vercel 의 미리 만든 글 응답은 Vary 에 Next-Url 이 없어, 클라이언트가 그 캐시를 '가로채질 일 없는 주소'로
           // 저장했다가 박물관에서도 그대로 써서 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만 그랬다).

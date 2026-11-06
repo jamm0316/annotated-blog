@@ -1,4 +1,6 @@
 'use client';
+// @MX:NOTE: 박물관 위 두루마리 읽기 창(<dialog>). 끝까지 내리면 도장, 닫으면 READ_EVENT
+// @MX:SPEC: .claude/docs/domains/museum.md
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';

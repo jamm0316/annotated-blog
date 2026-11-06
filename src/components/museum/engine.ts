@@ -1,3 +1,5 @@
+// @MX:NOTE: 박물관 3D 장면·배치·대화·입력·수첩·영수증·프레임 루프(mountMuseum). React 밖에서 three.js 와 DOM 으로 그린다
+// @MX:SPEC: .claude/docs/domains/museum.md
 import * as THREE from 'three';
 import type { Exhibit, PropKind } from '@/lib/museum';
 import { loadPassport, READ_EVENT, savePassport, stamp, STAMP_EVENT } from './passport';
@@ -6,6 +8,8 @@ import { loadPassport, READ_EVENT, savePassport, stamp, STAMP_EVENT } from './pa
 // 이 모드만 사이트의 세 가지 색 규칙에서 빠진다(나무·풀·크림 같은 색이 있어야 장난감처럼 보인다).
 
 export type AskPick = { id: string; reason: string };
+// @MX:ANCHOR: mountMuseum 의 옵션 계약(exhibits, ask, open)
+// @MX:REASON: Museum.tsx 가 /api/ask 응답과 라우터 이동을 이 모양에 맞춰 넘긴다. ask 는 실패 시 문구 담은 Error 를 던져야 부엉이가 그대로 말한다
 export type MuseumOptions = {
   exhibits: Exhibit[];
   /** 부엉이에게 물은 질문을 /api/ask 로 넘긴다. 실패하면 문구가 담긴 Error 를 던진다 */
@@ -14,6 +18,7 @@ export type MuseumOptions = {
   open: (exhibit: Exhibit) => void;
 };
 
+// @MX:NOTE: 관 이름. 수첩 제목·축하·명예의 전당·관 이름 표시(announce)가 함께 쓴다
 const HALL_NAME = { note: '기술 노트관', lab: '연구실 별관', book: '로비 책장' } as const;
 type TrophyKind = keyof typeof HALL_NAME | 'bug';
 
@@ -69,6 +74,7 @@ const MID = 10;
 const COLS_NOTE = [2, 5, 8];
 const COLS_LAB = [12, 15, 18];
 
+// @MX:NOTE: 격자 배치. 관·열·줄(한 줄 3개, 줄 간격 3), 문턱 벽 zw, 로비·책장·명예의 전당 위치를 정한다. '.' 칸만 걸을 수 있다
 function layout(exhibits: Exhibit[]) {
   // 같은 주제끼리 붙여 놓는다. 주제 순서는 그 주제의 최신 글 순
   const notes = exhibits.filter((e) => e.hall === 'note');
@@ -369,6 +375,8 @@ function makePlayer(k: Kit) {
 }
 
 // ── 장면 ────────────────────────────────────────────────────────────
+// @MX:ANCHOR: 박물관 장면을 root 에 붙이고 정리 함수를 돌려준다
+// @MX:REASON: Museum.tsx 가 동적 import 로 부르고 언마운트 때 반환 함수를 부른다. 새 리스너·타이머·three 자원은 반환 함수에서 꼭 정리할 것
 export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => void {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const { grid, H, zw, spots: spotDefs, shelves, plants, rows, trophies: trophyDefs } = layout(options.exhibits);
@@ -615,6 +623,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   };
   type Lamp = { o: THREE.Object3D; along: number };
   type Trail = { name: string; stops: { x: number; z: number; along: number }[]; lamps: Lamp[]; on: boolean; t0: number; from: number };
+  // @MX:NOTE: 연재 길. 같은 series.name 진열대(책장 제외)를 no 순으로 잇고, 다가가면 한 번만 켜진다(updateTrails)
   const trails: Trail[] = [];
   {
     const groups = new Map<string, { no: number; x: number; z: number }[]>();
@@ -713,6 +722,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   type Trophy = (typeof trophies)[number];
 
   // 숨은 버그. 구석·문 옆·리셉션 책상 뒤에 숨겨 두고, 가까이 가면 잡힌다. 잡은 것은 이 브라우저에 남는다
+  // @MX:WARN: 버그 id 는 passport.bugs 에 저장된다. 이름을 바꾸면 이미 잡은 방문자 기록과 어긋난다
+  // @MX:REASON: 잡은 버그를 id 로만 기억하고, 다 잡았는지는 이 목록 기준으로 판단한다
   const bugs = [
     { id: 'note-corner', x: 1.35, z: 1.3, r: 0.6 },
     { id: 'note-door', x: MID - 0.45, z: zw - 0.4, r: -2.2 },
@@ -992,6 +1003,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   }
 
   // ── 말풍선 ──────────────────────────────────────────────────────
+  // @MX:NOTE: 대화 구역. say(타이핑) → finished/next → after 로 선택지(ask). close 는 닫기 ✕·Esc·그만 대화하기가 함께 쓴다
   function stopTyping() {
     if (typing !== null) window.clearInterval(typing);
     typing = null;
@@ -1260,6 +1272,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   }
 
   // ── 수첩·도장·퀴즈 ──────────────────────────────────────────────
+  // @MX:NOTE: 도장 1 = 끝까지 읽음, 2 = 퀴즈 정답(금도장). 한 관을 다 모으면 명예의 전당이 열리고 부엉이는 관마다 한 번만 축하(cheered)
   const hallOf = (h: Exhibit['hall']) => spots.filter((s) => s.exhibit.hall === h);
 
   // 서 있는 칸이 어느 관인지. 벽·문턱 줄(zw)과 가운데 벽은 어느 관도 아니어서 이전 관을 그대로 둔다
@@ -1444,6 +1457,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   }
 
   // ── 퇴장 영수증 ─────────────────────────────────────────────────
+  // @MX:NOTE: 영수증 수치는 모두 이번 관람(visit)과 수첩에서 실제로 잰 값이다. 지어낸 값을 넣지 않는다
   function receiptLines() {
     const hm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     const mins = Math.max(1, Math.round((Date.now() - visit.start.getTime()) / 60000));
@@ -1555,6 +1569,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   }
 
   // ── 입력 ────────────────────────────────────────────────────────
+  // @MX:NOTE: 키 우선순위: dialog 열림 → 영수증 → 수첩 → P → 대화 중 Esc → / → 대화 선택지 → 걷기·E·Enter
   const KEYMAP: Record<string, string> = {
     ArrowLeft: 'left',
     KeyA: 'left',
@@ -1735,12 +1750,15 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   }
 
   // ── 매 프레임 ───────────────────────────────────────────────────
+  // @MX:NOTE: 프레임 루프. tween → 이동 → 버그·영수증·관 이름 → 카메라·렌더 → 태그·연재 길·이름표 순
   let raf = 0;
   let last = performance.now();
   let nearKey = '';
   function frame(now: number) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    // @MX:WARN: 두루마리가 닫혔는지는 이 dialog[open] 확인으로만 안다. afterReader(새 도장 알림·퀴즈)가 여기에 기댄다
+    // @MX:REASON: Reader 는 STAMP_EVENT 를 즉시 보내지만 engine 은 fresh 에 두었다가 dialog 가 사라진 첫 프레임에 알린다. 다른 dialog(그림 확대)도 같은 경로를 탄다
     // 글 읽기 창이 장면을 덮고 있는 동안은 그리지 않는다. 닫히면 새 도장을 알려 준다
     if (document.querySelector('dialog[open]')) {
       readerOpen = true;

@@ -1,3 +1,5 @@
+// @MX:NOTE: 글(posts)과 연구실(LAB)에서 박물관 진열품(Exhibit)을 만든다
+// @MX:SPEC: .claude/docs/domains/museum.md
 import { LAB } from '@/lib/lab';
 import { getPosts, type Quiz } from '@/lib/posts';
 
@@ -16,6 +18,8 @@ export type PropKind =
   | 'book'
   | 'monitor';
 
+// @MX:ANCHOR: 박물관 진열품 타입
+// @MX:REASON: engine.ts(배치·대화·수첩), Museum.tsx(open), app/museum/page.tsx 가 기댄다. id 는 search 의 id 와 같아야 /api/ask picks 가 진열대에 맞는다
 export type Exhibit = {
   /** 검색과 같은 id. 글은 slug, 연구실은 'lab:<repo>' */
   id: string;
