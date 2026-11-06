@@ -419,6 +419,7 @@ button:active:not(:disabled) {
 }
 .site-nav a {
   font-size: 13px;
+  white-space: nowrap;
   text-decoration: none;
   color: var(--ink-70);
   transition: color var(--dur-instant) ease-out;
@@ -1824,11 +1825,12 @@ button:active:not(:disabled) {
   }
 }
 /* 360px 폰에서도 머리말 한 줄에 다 들어가게 메뉴 사이를 좁힌다 */
+/* 760px 규칙보다 뒤에 와도 이기도록 머리말 안으로 좁혀 쓴다 */
 @media (max-width: 400px) {
-  .site-nav {
+  .site-header .site-nav {
     gap: 8px;
   }
-  .site-header__inner {
+  .site-header .site-header__inner {
     gap: 8px;
   }
 }
