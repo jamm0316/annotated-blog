@@ -9,11 +9,26 @@ import { loadPassport, READ_EVENT, stamp } from './passport';
 // 박물관 위에 펼쳐지는 두루마리. 글 내용만 가져와 위아래 나무 축 사이의 종이에 싣고, 종이를 위에서 아래로 스크롤해 읽는다.
 // 닫기·Esc·바깥 누르기·뒤로 가기 모두 history 를 한 칸 되돌려, 박물관은 서 있던 자리 그대로 남는다.
 // 종이 끝까지 내려가면 관람 수첩에 도장이 찍힌다(passport.ts).
-export function Reader({ id, title, href, children }: { id: string; title: string; href: string; children: React.ReactNode }) {
+export function Reader({
+  id,
+  title,
+  href,
+  hasQuiz,
+  children,
+}: {
+  id: string;
+  title: string;
+  href: string;
+  /** 부엉이 퀴즈가 있는 글이면 도장 아래 문구로 금도장을 알린다 */
+  hasQuiz: boolean;
+  children: React.ReactNode;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const paper = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const [sealed, setSealed] = useState(() => typeof window !== 'undefined' && !!loadPassport().stamps[id]);
+  // 0 = 아직, 1 = 끝까지 읽음(빨간 도장), 2 = 퀴즈까지 맞힘(금도장)
+  const [level, setLevel] = useState<0 | 1 | 2>(() => (typeof window === 'undefined' ? 0 : (loadPassport().stamps[id] ?? 0)));
+  const sealed = level > 0;
 
   useEffect(() => {
     const dialog = ref.current;
@@ -37,7 +52,7 @@ export function Reader({ id, title, href, children }: { id: string; title: strin
     const p = paper.current;
     if (!p || p.scrollTop + p.clientHeight < p.scrollHeight - 80) return;
     stamp(id);
-    setSealed(true);
+    setLevel((l) => (l ? l : 1));
   }
 
   return (
@@ -65,17 +80,24 @@ export function Reader({ id, title, href, children }: { id: string; title: strin
         </div>
         <div className="scroll__paper" ref={paper} tabIndex={-1} onScroll={sealed ? undefined : checkEnd}>
           {children}
-          <div className="scroll__seal" data-on={sealed || undefined} role="status">
+          <div className="scroll__seal" data-on={sealed || undefined} data-gold={level === 2 || undefined} role="status">
             <span className="scroll__stamp mono" aria-hidden>
               관람
               <br />
               완료
             </span>
-            <p className="mono">{sealed ? '수첩에 도장을 찍었어요. 말아서 닫으면 부엉이가 기다려요.' : '끝까지 읽으면 수첩에 도장이 찍혀요.'}</p>
+            <p className="mono">{sealText(level, hasQuiz)}</p>
           </div>
         </div>
         <div className="scroll__rod" aria-hidden />
       </div>
     </dialog>
   );
+}
+
+function sealText(level: 0 | 1 | 2, hasQuiz: boolean) {
+  if (level === 2) return '금도장이에요! 끝까지 읽고 문제까지 맞히셨어요. 정말 꼼꼼히 보셨네요.';
+  if (level === 1)
+    return hasQuiz ? '수첩에 도장을 찍었어요. 두루마리를 닫고 부엉이 문제를 맞히면 금도장으로 바꿔 드려요.' : '수첩에 도장을 찍었어요.';
+  return '끝까지 읽으면 수첩에 도장이 찍혀요.';
 }

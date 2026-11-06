@@ -2896,6 +2896,12 @@ button:active:not(:disabled) {
   border: 3px solid #c4331f;
   rotate: -10deg;
 }
+.scroll__seal[data-gold] .scroll__stamp {
+  /* 관람 수첩의 금도장과 같은 색 */
+  color: #8a5a00;
+  background: #f2c14e;
+  border-color: #b8860b;
+}
 @media (prefers-reduced-motion: no-preference) {
   .scroll__seal[data-on] .scroll__stamp {
     animation: seal-in 420ms var(--ease-liquid, ease-out) both;

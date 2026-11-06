@@ -386,11 +386,14 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const k = makeKit();
   const { at, box, cyl, ball, cone, torus, mat } = k;
 
-  // 들어온 시각에 맞춰 빛을 정한다. 낮은 햇빛, 아침·저녁은 낮게 비치는 노을빛, 밤은 진열대 불빛만. 들어올 때 한 번만 정한다
+  // 들어온 시각(방문자 기기 시계)에 맞춰 빛을 정한다. 아침(6~9시)은 동쪽에서 낮게 드는 맑은 햇살, 낮은 햇빛,
+  // 저녁(17~19시)은 서쪽에서 낮게 비치는 노을빛, 밤은 진열대 불빛만. 들어올 때 한 번만 정한다
   const hour = new Date().getHours();
-  const tod: 'day' | 'dusk' | 'night' = hour >= 19 || hour < 6 ? 'night' : hour < 9 || hour >= 17 ? 'dusk' : 'day';
+  const tod: 'dawn' | 'day' | 'dusk' | 'night' =
+    hour >= 19 || hour < 6 ? 'night' : hour < 9 ? 'dawn' : hour >= 17 ? 'dusk' : 'day';
   const LIGHT = {
     day: { sky: C.sky, hemi: [0xfff6e6, 0xb08a64, 1.6], sun: [0xfff1dc, 2], from: [-6, 18, 10] },
+    dawn: { sky: 0xf4ead6, hemi: [0xfff8ea, 0xa89070, 1.5], sun: [0xffe6b8, 1.9], from: [15, 9, 6] },
     dusk: { sky: 0xf2c49a, hemi: [0xffe0c0, 0x9a6a4a, 1.3], sun: [0xffa860, 2.1], from: [-15, 9, 6] },
     night: { sky: 0x1f2540, hemi: [0x8f9fd6, 0x3a2e40, 0.8], sun: [0xa9b8ff, 0.6], from: [8, 18, 6] },
   }[tod];
@@ -1114,7 +1117,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     if (panel) closePanel();
     const stamped = Object.keys(passport.stamps).length;
     const newest = spots.find((s) => s.exhibit.isNew && !passport.stamps[s.exhibit.id]);
-    const hello = tod === 'night' ? '늦은 시간에도 오셨네요!' : tod === 'dusk' ? '노을이 예쁜 시간에 오셨네요!' : '어서 오세요!';
+    const hello = tod === 'night' ? '늦은 시간에도 오셨네요!' : tod === 'dawn' ? '좋은 아침이에요!' : tod === 'dusk' ? '노을이 예쁜 시간에 오셨네요!' : '어서 오세요!';
     // 처음 인사는 세 줄 안에서 끝내고 바로 질문하기로 넘어간다
     const tips = [
       newest ? `빛기둥이 비추는 [${newest.exhibit.short}] 진열대는 새로 들어온 글이에요.` : '',
