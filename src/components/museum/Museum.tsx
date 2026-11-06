@@ -31,7 +31,11 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
         },
         open: (ex) => {
           if (ex.external) window.open(ex.href, '_blank', 'noopener,noreferrer');
-          else router.push(ex.href);
+          // 첫 화면 목록이 미리 받아 둔 /posts/<slug> 를 피하려고 박물관 전용 쿼리를 붙인다.
+          // Vercel 의 미리 만든 글 응답은 Vary 에 Next-Url 이 없어, 클라이언트가 그 캐시를 '가로채질 일 없는 주소'로
+          // 저장했다가 박물관에서도 그대로 써서 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만 그랬다).
+          // 쿼리가 다르면 캐시를 새로 찾으므로 Next-Url: /museum 으로 요청해 가로채기(@reader)를 받는다.
+          else router.push(`${ex.href}?from=museum`);
         },
       });
     });
