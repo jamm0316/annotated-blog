@@ -165,7 +165,14 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
           <h2 className="mono">
             <span className="accent">#</span> {heading}
           </h2>
-          <span className="mono">{main === 'lab' ? `${labList.length}개` : `${list.length}편`}</span>
+          <span className="mono section-head__meta">
+            {/* 마우스를 쓰는 화면에서만 보인다. 키 모양만으로 j/k 로 움직일 수 있다는 걸 알린다 */}
+            <span className="keys-hint" aria-hidden>
+              <kbd className="key">j</kbd>
+              <kbd className="key">k</kbd>
+            </span>
+            {main === 'lab' ? `${labList.length}개` : `${list.length}편`}
+          </span>
         </div>
         {main === 'lab' ? (
           <LabGrid key={`lab-${sub.join()}`} items={labList} />

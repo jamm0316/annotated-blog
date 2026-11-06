@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 // 누를 수 있는 것을 누르면 누른 자리에서 물방울이 번진다.
 // 목록 행·카드는 손이 들어온 자리를 --px/--py 로 넘겨, 바탕이 그 점에서부터 물처럼 차오르게 한다.
-const RIPPLE = '.row, .lab-card, .liquid__tab, .icon-btn, .next-nav__item, .code__bar button, .playground__legend button';
+const RIPPLE = '.row, .lab-card, .liquid__tab, .icon-btn, .search-trigger, .next-nav__item, .code__bar button, .playground__legend button';
 const FILL = '.row, .next-nav__item, .lab-card';
 
 export function Droplets() {

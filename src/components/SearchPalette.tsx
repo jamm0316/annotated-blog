@@ -99,11 +99,14 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
 
   return (
     <>
-      <button type="button" className="icon-btn" aria-label="글 검색 (/)" title="글 검색 ( / )" onClick={open}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      {/* 입력칸처럼 보이게 해서 누르기 전에 검색이라는 걸 알게 한다. 오른쪽 '/' 는 바로 여는 키 */}
+      <button type="button" className="search-trigger mono" aria-label="글 검색 (/)" onClick={open}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
           <circle cx="10.5" cy="10.5" r="6.5" />
           <path d="M15.5 15.5 20 20" strokeLinecap="round" />
         </svg>
+        <span className="search-trigger__label">검색</span>
+        <kbd className="key search-trigger__key">/</kbd>
       </button>
 
       <dialog

@@ -21,6 +21,12 @@ export function ZoomImage({ src, alt, width, height }: Props) {
           sizes="(max-width: 760px) 100vw, 680px"
           style={{ width: '100%', height: 'auto' }}
         />
+        {/* 누르면 커진다는 표시. 늘 보이게 둔다 */}
+        <span className="zoom__badge" aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+            <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+          </svg>
+        </span>
       </button>
       <dialog ref={dialog} className="zoom" aria-label={alt} onClick={() => dialog.current?.close()}>
         <Image
