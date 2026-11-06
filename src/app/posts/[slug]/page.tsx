@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { EndMark } from '@/components/EndMark';
 import { NextNav } from '@/components/NextNav';
+import { PostArticle } from '@/components/PostArticle';
 import { Toc } from '@/components/Toc';
 import { formatDate, getNeighbours, getPost, getPosts } from '@/lib/posts';
 
@@ -27,7 +27,6 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
   const post = getPost(slug);
   if (!post) notFound();
 
-  const { default: Body } = await import(`../../../../content/posts/${slug}/index.mdx`);
   const neighbours = getNeighbours(slug);
 
   return (
@@ -36,33 +35,7 @@ export default async function PostPage({ params }: PageProps<'/posts/[slug]'>) {
         <aside className="post-shell__toc">
           <Toc />
         </aside>
-        <article className="article" lang={post.lang}>
-          <header className="article__header">
-            <div className="mono article__kicker">
-              {post.topic && <span className="article__topic">[{post.topic}]</span>}
-              {post.tags.map((tag) => (
-                <span key={tag}>#{tag}</span>
-              ))}
-            </div>
-            <h1 className="article__title">{post.title}</h1>
-            {post.description && <p className="article__desc">{post.description}</p>}
-            <div className="mono article__meta">
-              <span>{formatDate(post.date)}</span>
-              <span aria-hidden>·</span>
-              <span>{post.readingTime}분</span>
-              {post.series && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{post.series}</span>
-                </>
-              )}
-            </div>
-          </header>
-          <div className="prose" data-prose>
-            <Body />
-          </div>
-          <EndMark />
-        </article>
+        <PostArticle post={post} />
       </div>
 
       {neighbours.length > 0 && (

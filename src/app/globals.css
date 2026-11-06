@@ -2453,3 +2453,145 @@ button.mode__item {
     display: list-item;
   }
 }
+
+/* 박물관 글 읽기 두루마리. 박물관 모드라 --m-* 색을 쓴다.
+   종이 안에서는 사이트 토큰(--bg·--ink…)을 종이 색으로 바꿔 글 본문 스타일을 그대로 쓴다. 코드 블록은 늘 어둡다.
+   대비(종이 #fbf0dc 기준): 글자 #3a2a20 13.0, 75% 글자 5.9, 남색 #2b3a67 10.1 */
+.reader {
+  --m-ink: #3a2a20;
+  --m-paper: #fbf0dc;
+  --m-paper-edge: #ecd8b4;
+  --m-wood: #a86a3e;
+  --m-wood-dark: #7a4a2c;
+  --m-navy: #2b3a67;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 20px 28px;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.reader[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.reader::backdrop {
+  background-color: rgb(43 28 18 / 0.62);
+}
+.scroll {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, calc(var(--prose) + 96px));
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  filter: drop-shadow(0 18px 28px rgb(43 28 18 / 0.45));
+}
+/* 위아래 나무 축. 종이보다 양옆으로 조금 길고 끝에 손잡이가 달렸다 */
+.scroll__rod {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 30px;
+  margin: 0 -18px;
+  padding: 0 34px;
+  border-radius: 15px;
+  background: linear-gradient(var(--m-wood) 0%, #c98a55 35%, var(--m-wood) 60%, var(--m-wood-dark) 100%);
+  border: 2px solid var(--m-wood-dark);
+}
+.scroll__rod::before,
+.scroll__rod::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 38px;
+  margin-top: -19px;
+  border-radius: 10px;
+  background: linear-gradient(#c98a55, var(--m-wood-dark));
+  border: 2px solid var(--m-wood-dark);
+}
+.scroll__rod::before {
+  left: -14px;
+}
+.scroll__rod::after {
+  right: -14px;
+}
+.scroll__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--m-paper);
+  font: inherit;
+  font-size: 12px;
+  color: var(--m-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+.scroll__tag .key {
+  color: var(--m-ink);
+  border-color: rgb(58 42 32 / 0.3);
+}
+.scroll__paper {
+  --bg: var(--m-paper);
+  --bg-raised: var(--m-paper-edge);
+  --ink: var(--m-ink);
+  --ink-70: rgb(58 42 32 / 0.75);
+  --line: rgb(58 42 32 / 0.14);
+  --line-strong: rgb(58 42 32 / 0.3);
+  --accent: var(--m-navy);
+  --on-accent: var(--m-paper);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--m-wood) transparent;
+  margin: -6px 0;
+  padding: 6px 48px 40px;
+  /* 양옆 가장자리가 살짝 말려 들어간 종이 */
+  background: linear-gradient(90deg, var(--m-paper-edge), var(--m-paper) 28px, var(--m-paper) calc(100% - 28px), var(--m-paper-edge));
+  color: var(--ink);
+  font-family: var(--font-serif), ui-serif, 'AppleMyungjo', serif;
+  outline: none;
+  color-scheme: light;
+}
+.scroll__paper .article {
+  padding-top: 36px;
+}
+@media (max-width: 640px) {
+  .reader {
+    padding: 10px 20px;
+  }
+  .scroll__rod {
+    margin: 0 -12px;
+    padding: 0 26px;
+  }
+  .scroll__paper {
+    padding: 6px 18px 32px;
+  }
+}
+/* 펼칠 때 위 축에서 종이가 아래로 풀려 내려온다. 한 번만 움직인다 */
+@media (prefers-reduced-motion: no-preference) {
+  .reader[open] .scroll {
+    animation: unroll var(--dur-slow) var(--ease-out);
+  }
+  .reader[open]::backdrop {
+    animation: fade var(--dur-fast) ease-out;
+  }
+}
+@keyframes unroll {
+  from {
+    max-height: 72px;
+  }
+}

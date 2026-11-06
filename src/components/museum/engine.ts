@@ -25,6 +25,8 @@ const C = {
   wood: 0xa86a3e,
   woodDark: 0x7a4a2c,
   orange: 0xff7a1a,
+  // 주황(색상 25°)의 보색(205°). 주황·나무색 바닥 위에서 고른 진열대를 가리키는 고리
+  mark: 0x1aa3ff,
   navy: 0x2b3a67,
   ink: 0x2b221c,
   white: 0xffffff,
@@ -448,7 +450,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const glass = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, shininess: 120, depthWrite: false });
   const domeGeo = new THREE.SphereGeometry(0.3, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
   const ringGeo = new THREE.RingGeometry(0.42, 0.52, 32);
-  const ringMat = new THREE.MeshBasicMaterial({ color: C.orange });
+  const ringMat = new THREE.MeshBasicMaterial({ color: C.mark });
   k.disposables.push(glass, domeGeo, ringGeo, ringMat);
   const spots: Spot[] = [];
   const pickables: THREE.Object3D[] = [floor];
@@ -794,7 +796,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
 
   function owlMenu() {
     ask([
-      { label: '기술 노트', run: () => guide('note', '위쪽 왼편 기술 노트관이에요. 진열대 아래에 주황 동그라미를 그려 둘게요.') },
+      { label: '기술 노트', run: () => guide('note', '위쪽 왼편 기술 노트관이에요. 진열대 아래에 파란 동그라미를 그려 둘게요.') },
       { label: '연구실', run: () => guide('lab', '위쪽 오른편 연구실 별관이에요. 직접 만들어 올린 작은 앱과 도구가 있어요.') },
       { label: '책 이야기', run: () => guide('book', '로비 양옆 책장이에요. 읽고 쓴 독후감이 꽂혀 있어요.') },
       { label: '직접 물어볼게요', run: question },
@@ -864,7 +866,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     }
     const ids = new Set(found.map((f) => f.spot.exhibit.id));
     glow((s) => ids.has(s.exhibit.id));
-    say('부엉이', [`${found.length}개를 찾았어요. 바닥에 주황 동그라미를 그려 뒀어요. 어디로 안내할까요?`], () =>
+    say('부엉이', [`${found.length}개를 찾았어요. 바닥에 파란 동그라미를 그려 뒀어요. 어디로 안내할까요?`], () =>
       ask([
         ...found.map(({ pick, spot }) => ({
           label: spot.exhibit.short,
@@ -916,7 +918,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
-    if (document.querySelector('dialog[open]')) return;
+    // 글 읽기 창·그림 확대 창이 떠 있으면 걷지 않는다
+    if (document.querySelector('dialog[open]')) return keys.clear();
     const inField = typingInto(e.target);
     if (e.key === 'Escape' && talking) {
       e.preventDefault();
@@ -1054,6 +1057,11 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   function frame(now: number) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    // 글 읽기 창이 장면을 덮고 있는 동안은 그리지 않는다
+    if (document.querySelector('dialog[open]')) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     let dx = 0;
     let dz = 0;
     if (!talking) {
