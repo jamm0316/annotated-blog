@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, IBM_Plex_Sans_KR, Noto_Serif_KR } from 'next/font/google
 import Link from 'next/link';
 import { Analytics } from '@vercel/analytics/next';
 import { Droplets } from '@/components/Droplets';
+import { HashLink } from '@/components/HashLink';
 import { SearchPalette } from '@/components/SearchPalette';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getSearchItems } from '@/lib/search';
@@ -55,15 +56,15 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               evan<span className="accent">.log</span>
             </Link>
             <nav aria-label="주 메뉴" className="site-nav">
-              <Link href="/#note" className="mono">
+              <HashLink href="/#note" className="mono">
                 기술 노트
-              </Link>
-              <Link href="/#book" className="mono">
+              </HashLink>
+              <HashLink href="/#book" className="mono">
                 독후감
-              </Link>
-              <Link href="/#lab" className="mono">
+              </HashLink>
+              <HashLink href="/#lab" className="mono">
                 연구실
-              </Link>
+              </HashLink>
               <SearchPalette posts={searchItems} />
               <ThemeToggle />
             </nav>
