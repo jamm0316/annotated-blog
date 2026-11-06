@@ -1648,14 +1648,20 @@ button:active:not(:disabled) {
   overscroll-behavior: contain;
   cursor: zoom-out;
 }
+/* 그림을 화면 한가운데에 둔다. 위아래 margin:auto 라 화면보다 긴 그림은 위에서부터 보이고 아래로 내려 읽는다 */
+.zoom[open] {
+  display: flex;
+  flex-direction: column;
+}
 .zoom::backdrop {
   background-color: color-mix(in srgb, var(--bg) 94%, transparent);
 }
 .zoom__img {
   display: block;
+  flex: none;
   width: 100%;
   height: auto;
-  margin: 0 auto;
+  margin: auto;
   border-radius: 4px;
 }
 .zoom__close {
