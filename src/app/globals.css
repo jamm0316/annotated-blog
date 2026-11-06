@@ -2407,6 +2407,94 @@ button:active:not(:disabled) {
   font-size: 14px;
   color: var(--m-accent);
 }
+/* 대화창 오른쪽 위, 이름표와 마주 보는 자리에 붙는 닫기 */
+.museum__skip {
+  position: absolute;
+  top: -16px;
+  right: 22px;
+  padding: 1px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m-ink);
+  background: var(--m-bubble);
+  border: 3px solid var(--m-ink);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) ease-out,
+    color var(--dur-instant) ease-out;
+}
+.museum__skip:hover,
+.museum__skip:focus-visible {
+  color: #fff;
+  background: var(--m-accent);
+  outline: none;
+}
+/* 관에 들어서면 가운데 잠깐 떴다 사라지는 관 이름. 숨김은 engine.ts 의 타이머가 맡는다 */
+.museum__room {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  z-index: 1;
+  translate: -50% -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  text-align: center;
+}
+.museum__room-count {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--m-bubble);
+  padding: 1px 12px;
+  background: var(--m-navy);
+  border-radius: 999px;
+}
+.museum__room-name {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--m-bubble);
+  -webkit-text-stroke: 6px var(--m-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 rgb(58 42 32 / 0.25);
+}
+.museum__room-name::before,
+.museum__room-name::after {
+  content: '';
+  width: 48px;
+  height: 3px;
+  background: var(--m-ink);
+  border-radius: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .museum__room.is-on {
+    animation: museum-room 2600ms var(--ease-out, ease-out) both;
+  }
+}
+/* 640ms 에 걸쳐 떠오르고, 잠깐 머문 뒤 사라진다. 한 번만 돈다 */
+@keyframes museum-room {
+  0% {
+    opacity: 0;
+    translate: -50% calc(-50% + 10px);
+  }
+  25%,
+  75% {
+    opacity: 1;
+    translate: -50% -50%;
+  }
+  100% {
+    opacity: 0;
+    translate: -50% calc(-50% - 6px);
+  }
+}
 .museum__choices {
   display: flex;
   flex-wrap: wrap;
@@ -2754,6 +2842,14 @@ button:active:not(:disabled) {
   }
   .museum__tag {
     font-size: 12px;
+  }
+  .museum__room-name {
+    font-size: 24px;
+    -webkit-text-stroke-width: 5px;
+  }
+  .museum__room-name::before,
+  .museum__room-name::after {
+    width: 24px;
   }
 }
 .mode__icon,

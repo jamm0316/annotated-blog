@@ -795,6 +795,19 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const choices = el('div', 'museum__choices', talk);
   const more = el('span', 'museum__more', talk);
   more.textContent = '▼';
+  // 대사를 끝까지 넘기지 않아도 오른쪽 위 닫기로 대화창을 바로 닫는다(Esc 와 같다)
+  const skip = el('button', 'museum__skip', talk) as HTMLButtonElement;
+  skip.type = 'button';
+  skip.textContent = '닫기 ✕';
+  skip.setAttribute('aria-label', '대화창 닫기 (Esc)');
+  skip.addEventListener('click', (e) => {
+    e.stopPropagation();
+    close();
+  });
+  // 관에 들어서면 그 관 이름이 화면 가운데 잠깐 떴다 사라진다(게임에서 방에 들어설 때처럼). 한 번만 움직이고 멈춘다
+  const room = el('div', 'museum__room');
+  room.hidden = true;
+  room.setAttribute('aria-live', 'polite');
   if (newPos) tags.push({ text: 'NEW', pos: newPos, e: Object.assign(el('div', 'museum__tag museum__tag--new'), { textContent: 'NEW' }) });
 
   // 관람 수첩 버튼, 수첩, 알림 한 줄, 퇴장 영수증
@@ -1081,11 +1094,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
 
   function owlMenu() {
     ask([
-      { label: '직접 물어볼게요', run: question },
-      { label: '기술 노트', run: () => guide('note', '위쪽 왼편 기술 노트관이에요. 진열대 아래에 파란 동그라미를 그려 둘게요.') },
-      { label: '연구실', run: () => guide('lab', '위쪽 오른편 연구실 별관이에요. 직접 만들어 올린 작은 앱과 도구가 있어요.') },
-      { label: '책 이야기', run: () => guide('book', '로비 양옆 책장이에요. 읽고 쓴 독후감이 꽂혀 있어요.') },
-      { label: '그만 볼게요', run: close },
+      { label: '질문하기', run: question },
+      { label: '그만 대화하기', run: close },
     ]);
   }
   function talkOwl() {
@@ -1093,27 +1103,25 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     const stamped = Object.keys(passport.stamps).length;
     const newest = spots.find((s) => s.exhibit.isNew && !passport.stamps[s.exhibit.id]);
     const hello = tod === 'night' ? '늦은 시간에도 오셨네요!' : tod === 'dusk' ? '노을이 예쁜 시간에 오셨네요!' : '어서 오세요!';
+    // 처음 인사는 세 줄 안에서 끝내고 바로 질문하기로 넘어간다
+    const tips = [
+      newest ? `빛기둥이 비추는 [${newest.exhibit.short}] 진열대는 새로 들어온 글이에요.` : '',
+      stamped ? '' : '글을 끝까지 읽으면 수첩(P)에 도장이 찍히고, 관 어딘가에 버그도 숨어 있어요.',
+    ]
+      .filter(Boolean)
+      .join(' ');
     const lines = greeted
       ? ['또 오셨네요! 무엇을 찾으세요?']
       : [
           stamped
             ? `${hello} 다시 오셨네요. 수첩에 도장이 ${stamped}개 모였어요.`
-            : `${hello} 여기는 evan.log 기록관이에요. 글 한 편이 진열대 하나예요.`,
-          '위쪽 왼편은 기술 노트관, 오른편은 연구실 별관이에요. 책 이야기는 로비 양옆 책장에 있고요.',
-          ...(newest ? [`새로 들어온 글도 있어요. 빛기둥이 비추는 [${newest.exhibit.short}] 진열대예요.`] : []),
-          ...(stamped
-            ? []
-            : ['글을 끝까지 읽으면 관람 수첩에 도장이 찍혀요. 수첩은 P 나 왼쪽 위 버튼으로 열어요.', '참, 관 어딘가에 버그가 숨어 있대요. 보이면 다가가서 잡아 주세요!']),
-          '어디서든 / 를 누르면 제가 날아올게요. 무엇을 찾으세요?',
+            : `${hello} evan.log 기록관이에요. 위쪽 왼편은 기술 노트관, 오른편은 연구실 별관, 책 이야기는 로비 양옆 책장에 있어요.`,
+          ...(tips ? [tips] : []),
+          '궁금한 걸 물어보세요. 어디서든 / 를 누르면 제가 날아올게요.',
         ];
     greeted = true;
     say('부엉이', lines, owlMenu);
   }
-  function guide(hall: Exhibit['hall'], line: string) {
-    glow((s) => s.exhibit.hall === hall);
-    say('부엉이', [line]);
-  }
-
   function question() {
     choices.replaceChildren();
     stopTyping();
@@ -1253,6 +1261,30 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
 
   // ── 수첩·도장·퀴즈 ──────────────────────────────────────────────
   const hallOf = (h: Exhibit['hall']) => spots.filter((s) => s.exhibit.hall === h);
+
+  // 서 있는 칸이 어느 관인지. 벽·문턱 줄(zw)과 가운데 벽은 어느 관도 아니어서 이전 관을 그대로 둔다
+  let zone: Exhibit['hall'] | null = null;
+  let roomTimer = 0;
+  function zoneAt(x: number, z: number): Exhibit['hall'] | null {
+    const tx = Math.floor(x);
+    const tz = Math.floor(z);
+    if (tz > zw) return 'book';
+    if (tz === zw || tx === MID) return null;
+    return tx < MID ? 'note' : 'lab';
+  }
+  const ROOM_COUNT = { note: (n: number) => `기술 노트 ${n}편`, lab: (n: number) => `실험 ${n}개`, book: (n: number) => `독후감 ${n}편` };
+  function announce(hall: Exhibit['hall']) {
+    room.replaceChildren();
+    el('span', 'museum__room-count mono', room).textContent = ROOM_COUNT[hall](hallOf(hall).length);
+    el('strong', 'museum__room-name', room).textContent = HALL_NAME[hall];
+    room.hidden = false;
+    // 같은 요소에 애니메이션을 처음부터 다시 걸려고 한 번 뗐다 붙인다
+    room.classList.remove('is-on');
+    void room.offsetWidth;
+    room.classList.add('is-on');
+    window.clearTimeout(roomTimer);
+    roomTimer = window.setTimeout(() => (room.hidden = true), 2600);
+  }
   function unlocked(kind: TrophyKind) {
     if (kind === 'bug') return bugs.length > 0 && bugs.every((b) => b.caught);
     const list = hallOf(kind);
@@ -1788,6 +1820,11 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
         if (!b.caught && Math.hypot(b.x - player.position.x, b.z - player.position.z) < 0.6) catchBug(b);
       });
       if (!intro && southward && player.position.z > H - 0.75) showReceipt();
+      const zn = zoneAt(player.position.x, player.position.z);
+      if (zn && zn !== zone) {
+        zone = zn;
+        announce(zn);
+      }
     }
 
     placeCamera(false);
@@ -1858,6 +1895,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     cancelAnimationFrame(raf);
     timers.forEach((t) => window.clearTimeout(t));
     window.clearTimeout(toastTimer);
+    window.clearTimeout(roomTimer);
     window.removeEventListener(STAMP_EVENT, onStamp);
     window.removeEventListener(READ_EVENT, onRead);
     stopTyping();
