@@ -2,16 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import type { SearchItem } from '@/lib/search';
 
-export type SearchPost = {
-  slug: string;
-  title: string;
-  topic: string;
-  date: string;
-  lang: string;
-  /** 제목 말고 함께 찾을 글자들: 주제·칩·태그·요약·설명 */
-  text: string;
-};
+type SearchPost = SearchItem;
+
 
 const LATEST = 8;
 
@@ -44,7 +38,7 @@ function grep(posts: SearchPost[], query: string) {
     .map((r) => r.p);
 }
 
-type Pick = { slug: string; title: string; topic: string; date: string; lang: string; reason: string };
+type Pick = Omit<SearchItem, 'text'> & { reason: string };
 // grep: 키워드로 거른다. ask: 문장을 AI 에 물어 고른 글을 보여 준다(/api/ask).
 type Ask = { status: 'loading' } | { status: 'done'; picks: Pick[] } | { status: 'error'; message: string };
 
@@ -163,9 +157,11 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const go = (slug: string) => {
+  // 글은 이 사이트 안에서, 연구실 항목은 새 탭에서 연다
+  const go = (item: { href: string; external: boolean }) => {
     close();
-    router.push(`/posts/${slug}`);
+    if (item.external) window.open(item.href, '_blank', 'noopener,noreferrer');
+    else router.push(item.href);
   };
 
   const move = (by: number) => {
@@ -201,18 +197,18 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (asking) {
-        if (ask.status === 'done' && ask.picks[active]) go(ask.picks[active].slug);
-      } else if (results[active]) go(results[active].slug);
+        if (ask.status === 'done' && ask.picks[active]) go(ask.picks[active]);
+      } else if (results[active]) go(results[active]);
       else if (canAsk) void askAI();
     }
   };
 
   const activeId = asking
     ? ask.status === 'done' && ask.picks[active]
-      ? `ask-${ask.picks[active].slug}`
+      ? `ask-${ask.picks[active].id}`
       : undefined
     : results[active]
-      ? `search-${results[active].slug}`
+      ? `search-${results[active].id}`
       : canAsk && active === results.length
         ? 'search-ask'
         : undefined;
@@ -277,14 +273,14 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
             {!asking &&
               results.map((p, i) => (
                 <li
-                  key={p.slug}
-                  id={`search-${p.slug}`}
+                  key={p.id}
+                  id={`search-${p.id}`}
                   role="option"
                   aria-selected={i === active}
                   data-index={i}
                   className={`search__item${i === active ? ' is-active' : ''}`}
                   onPointerMove={() => setActive(i)}
-                  onClick={() => go(p.slug)}
+                  onClick={() => go(p)}
                 >
                   <span className="mono search__date">{p.date.replaceAll('-', '.')}</span>
                   <span className="mono search__topic">[{p.topic}]</span>
@@ -318,14 +314,14 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
             {ask?.status === 'done' &&
               ask.picks.map((p, i) => (
                 <li
-                  key={p.slug}
-                  id={`ask-${p.slug}`}
+                  key={p.id}
+                  id={`ask-${p.id}`}
                   role="option"
                   aria-selected={i === active}
                   data-index={i}
                   className={`search__item search__pick${i === active ? ' is-active' : ''}`}
                   onPointerMove={() => setActive(i)}
-                  onClick={() => go(p.slug)}
+                  onClick={() => go(p)}
                 >
                   <span className="mono search__date">{p.date.replaceAll('-', '.')}</span>
                   <span className="mono search__topic">[{p.topic}]</span>

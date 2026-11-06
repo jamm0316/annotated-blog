@@ -5,7 +5,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { Droplets } from '@/components/Droplets';
 import { SearchPalette } from '@/components/SearchPalette';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { getPosts } from '@/lib/posts';
+import { getSearchItems } from '@/lib/search';
 import './globals.css';
 
 // 본문·제목은 읽기 편한 명조(Noto Serif KR), 날짜·라벨·수치·코드는 고정폭(IBM Plex Mono).
@@ -41,14 +41,7 @@ const themeScript = `try{if(localStorage.getItem('theme')==='light')document.doc
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   // 검색에 필요한 글자만 넘긴다. 본문은 넣지 않는다.
-  const searchPosts = getPosts().map((p) => ({
-    slug: p.slug,
-    title: p.title,
-    topic: p.topic,
-    date: p.date,
-    lang: p.lang,
-    text: [p.topic, ...p.areas, ...p.tags, p.series, p.description, p.summary].join(' '),
-  }));
+  const searchItems = getSearchItems();
 
   return (
     <html lang="ko" data-scroll-behavior="smooth" className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
@@ -71,7 +64,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/#lab" className="mono">
                 연구실
               </Link>
-              <SearchPalette posts={searchPosts} />
+              <SearchPalette posts={searchItems} />
               <ThemeToggle />
             </nav>
           </div>
