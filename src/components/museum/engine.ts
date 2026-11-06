@@ -442,40 +442,6 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       rug(1.5, 3 + 3 * r + 0.15, 8, 0.7);
       rug(11.5, 3 + 3 * r + 0.15, 8, 0.7);
     }
-    // 연재: 같은 연재 진열대를 편 순서대로 남색 점선으로 잇고, 받침 앞에 편 번호를 적는다
-    const series = new Map<string, { no: number; x: number; z: number }[]>();
-    spotDefs.forEach(({ exhibit, x, z }) => {
-      if (!exhibit.series) return;
-      const list = series.get(exhibit.series.name) ?? [];
-      list.push({ no: exhibit.series.no, x, z });
-      series.set(exhibit.series.name, list);
-    });
-    g.strokeStyle = hex(C.navy);
-    g.lineWidth = 4;
-    g.lineCap = 'round';
-    g.setLineDash([9, 9]);
-    series.forEach((list) => {
-      if (list.length < 2) return;
-      list.sort((a, b) => a.no - b.no);
-      g.beginPath();
-      list.forEach(({ x, z }, i) => (i ? g.lineTo((x + 0.5) * P, (z + 0.5) * P) : g.moveTo((x + 0.5) * P, (z + 0.5) * P)));
-      g.stroke();
-    });
-    g.setLineDash([]);
-    g.font = `bold 13px monospace`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    series.forEach((list) =>
-      list.forEach(({ no, x, z }) => {
-        if (list.length < 2) return;
-        g.fillStyle = hex(C.navy);
-        g.beginPath();
-        g.arc((x + 0.5) * P, (z + 1.08) * P, 9, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = hex(C.cream);
-        g.fillText(String(no), (x + 0.5) * P, (z + 1.08) * P + 1);
-      }),
-    );
     const t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
@@ -619,6 +585,104 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     }
   });
   if (beam) scene.add(beam);
+
+  // 연재 길. 평소에는 꺼져 있다가 연재 진열대에 다가가면 그 자리에서부터 점선이 한 칸씩 켜지며 다른 편 쪽으로 뻗고,
+  // 길에서 멀어지면 꺼진다. 켜지는 움직임은 한 번만 일어나고 멈춘다(반복 애니메이션 금지)
+  const dashGeo = new THREE.BoxGeometry(0.2, 0.02, 0.08);
+  const dashMat = new THREE.MeshBasicMaterial({ color: 0xffc94a });
+  const haloGeo = new THREE.PlaneGeometry(0.3, 0.2);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending });
+  const badgeGeo = new THREE.CircleGeometry(0.2, 24);
+  k.disposables.push(dashGeo, dashMat, haloGeo, haloMat, badgeGeo);
+  const badgeMat = (no: number) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const g = cv.getContext('2d')!;
+    g.fillStyle = '#ffc94a';
+    g.beginPath();
+    g.arc(32, 32, 30, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#2b221c';
+    g.font = 'bold 34px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(String(no), 32, 35);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+    k.disposables.push(tex, m);
+    return m;
+  };
+  type Lamp = { o: THREE.Object3D; along: number };
+  type Trail = { name: string; stops: { x: number; z: number; along: number }[]; lamps: Lamp[]; on: boolean; t0: number; from: number };
+  const trails: Trail[] = [];
+  {
+    const groups = new Map<string, { no: number; x: number; z: number }[]>();
+    spotDefs.forEach(({ exhibit, x, z }) => {
+      if (!exhibit.series) return;
+      const list = groups.get(exhibit.series.name) ?? [];
+      list.push({ no: exhibit.series.no, x: x + 0.5, z: z + 0.5 });
+      groups.set(exhibit.series.name, list);
+    });
+    groups.forEach((list, name) => {
+      if (list.length < 2) return;
+      list.sort((a, b) => a.no - b.no);
+      const lamps: Lamp[] = [];
+      const stops: Trail['stops'] = [];
+      let along = 0;
+      list.forEach((p, i) => {
+        stops.push({ x: p.x, z: p.z, along });
+        const badge = at(new THREE.Mesh(badgeGeo, badgeMat(p.no)), p.x, 0.014, p.z + 0.62);
+        badge.rotation.x = -Math.PI / 2;
+        lamps.push({ o: badge, along });
+        const q = list[i + 1];
+        if (!q) return;
+        const len = Math.hypot(q.x - p.x, q.z - p.z);
+        const ang = Math.atan2(q.z - p.z, q.x - p.x);
+        // 받침대 둘레는 비우고 그 사이에 0.44 간격으로 점선을 놓는다
+        for (let d = 0.5; d <= len - 0.5; d += 0.44) {
+          const o = at(new THREE.Group(), p.x + ((q.x - p.x) * d) / len, 0.012, p.z + ((q.z - p.z) * d) / len);
+          o.rotation.y = -ang;
+          const halo = new THREE.Mesh(haloGeo, haloMat);
+          halo.rotation.x = -Math.PI / 2;
+          o.add(new THREE.Mesh(dashGeo, dashMat), halo);
+          lamps.push({ o, along: along + d });
+        }
+        along += len;
+      });
+      lamps.forEach(({ o }) => {
+        o.visible = false;
+        scene.add(o);
+      });
+      trails.push({ name, stops, lamps, on: false, t0: 0, from: 0 });
+    });
+  }
+  /** 한 칸이 켜지는 간격(초당 몇 칸 길이만큼 퍼지는지)과 한 칸이 커지는 시간 */
+  const TRAIL_SPEED = 7;
+  const LAMP_POP = 140;
+  function updateTrails(now: number) {
+    const p = player.position;
+    trails.forEach((tr) => {
+      // 그 연재 진열대 가까이 오면 켜고, 길(점선)에서 2칸 넘게 벗어나면 끈다
+      const nearStop = tr.stops.find((s) => Math.hypot(s.x - p.x, s.z - p.z) < 1.5);
+      if (!tr.on && nearStop) {
+        tr.on = true;
+        tr.t0 = now;
+        tr.from = nearStop.along;
+      } else if (tr.on && !nearStop && !tr.lamps.some(({ o }) => Math.hypot(o.position.x - p.x, o.position.z - p.z) < 2)) {
+        tr.on = false;
+        tr.t0 = now;
+      }
+      tr.lamps.forEach(({ o, along }) => {
+        // 켤 때는 다가간 진열대에서 먼 쪽으로 한 칸씩, 끌 때는 한꺼번에 줄어든다
+        const delay = tr.on ? (Math.abs(along - tr.from) / TRAIL_SPEED) * 1000 : 0;
+        const k = reduce ? (tr.on ? 1 : 0) : Math.min(1, Math.max(0, (now - tr.t0 - delay) / LAMP_POP));
+        const s = tr.on ? k : 1 - k;
+        o.visible = s > 0.01;
+        if (o.visible) o.scale.setScalar(tr.on ? 0.4 + 0.6 * s + Math.sin(s * Math.PI) * 0.25 : s);
+      });
+    });
+  }
 
   // 명예의 전당. 잠긴 받침대는 가림천을 덮고, 열리면 금 트로피(버그는 금 딱정벌레)가 보인다
   const trophies = trophyDefs.map(({ kind, x, z }) => {
@@ -1017,10 +1081,10 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
 
   function owlMenu() {
     ask([
+      { label: '직접 물어볼게요', run: question },
       { label: '기술 노트', run: () => guide('note', '위쪽 왼편 기술 노트관이에요. 진열대 아래에 파란 동그라미를 그려 둘게요.') },
       { label: '연구실', run: () => guide('lab', '위쪽 오른편 연구실 별관이에요. 직접 만들어 올린 작은 앱과 도구가 있어요.') },
       { label: '책 이야기', run: () => guide('book', '로비 양옆 책장이에요. 읽고 쓴 독후감이 꽂혀 있어요.') },
-      { label: '직접 물어볼게요', run: question },
       { label: '그만 볼게요', run: close },
     ]);
   }
@@ -1146,7 +1210,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       },
     ];
     if (spot.dome) list.push({ label: '돔 열어 보기', sub: 'E', run: () => (close(), openDome(spot)) });
-    if (next) list.push({ label: `다음 편 ${sr!.no + 1}/${sr!.of}`, sub: '점선을 따라가요', run: () => (close(), approach(next)) });
+    if (next) list.push({ label: `다음 편 ${sr!.no + 1}/${sr!.of}`, sub: '불 켜진 길을 따라가요', run: () => (close(), approach(next)) });
     if (ex.quiz && passport.stamps[ex.id] === 1) list.push({ label: '퀴즈 풀기', run: () => quiz(spot) });
     list.push({ label: '닫기', run: close });
     say('설명판', lines, () => ask(list));
@@ -1730,6 +1794,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     renderer.render(scene, camera);
 
     tags.forEach((t) => (t.e.hidden = t.e.dataset.off === '1' || !project(t.pos, t.e)));
+    updateTrails(now);
     const n = paused() || intro ? null : nearby();
     if (n) {
       const key = n.kind === 'owl' ? 'owl' : n.kind === 'spot' ? n.spot.exhibit.id : `trophy:${n.trophy.kind}`;
