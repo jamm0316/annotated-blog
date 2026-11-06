@@ -15,6 +15,35 @@ export type SearchPost = {
 
 const LATEST = 8;
 
+// 검색창을 열면 입력칸에 타이핑됐다 지워지는 예시 질문. 실제 글로 답이 나오는 것만 둔다.
+// 한 바퀴만 돌고 마지막 질문에서 멈춘다(반복 애니메이션 금지). Tab 을 누르면 지금 보이는 질문이 들어간다.
+const SUGGESTIONS = [
+  '보안 관련 글 있어?',
+  '캐시를 더 자세히 다룬 글이 있어?',
+  '다운로드 API 메모리 문제를 푼 글',
+  'AI 코딩 에이전트를 어떻게 통제해?',
+];
+const TYPE_MS = 70;
+const ERASE_MS = 30;
+const HOLD_MS = 1600;
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function grep(posts: SearchPost[], query: string) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return posts.slice(0, LATEST);
+  return posts
+    .map((p) => {
+      const title = p.title.toLowerCase();
+      const all = `${title} ${p.text.toLowerCase()}`;
+      if (!terms.every((t) => all.includes(t))) return null;
+      return { p, score: terms.filter((t) => title.includes(t)).length };
+    })
+    .filter((r): r is { p: SearchPost; score: number } => r !== null)
+    .sort((a, b) => b.score - a.score || b.p.date.localeCompare(a.p.date))
+    .map((r) => r.p);
+}
+
 type Pick = { slug: string; title: string; topic: string; date: string; lang: string; reason: string };
 // grep: 키워드로 거른다. ask: 문장을 AI 에 물어 고른 글을 보여 준다(/api/ask).
 type Ask = { status: 'loading' } | { status: 'done'; picks: Pick[] } | { status: 'error'; message: string };
@@ -34,20 +63,52 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
   const [active, setActive] = useState(0);
   const [ask, setAsk] = useState<Ask | null>(null);
 
-  const results = useMemo(() => {
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (terms.length === 0) return posts.slice(0, LATEST);
-    return posts
-      .map((p) => {
-        const title = p.title.toLowerCase();
-        const all = `${title} ${p.text.toLowerCase()}`;
-        if (!terms.every((t) => all.includes(t))) return null;
-        return { p, score: terms.filter((t) => title.includes(t)).length };
-      })
-      .filter((r): r is { p: SearchPost; score: number } => r !== null)
-      .sort((a, b) => b.score - a.score || b.p.date.localeCompare(a.p.date))
-      .map((r) => r.p);
-  }, [posts, query]);
+  const [isOpen, setIsOpen] = useState(false);
+  // 입력칸에 타이핑 중인 예시(placeholder)와 그 원문
+  const [hint, setHint] = useState('');
+  const [suggestion, setSuggestion] = useState(SUGGESTIONS[0]);
+  const touched = useRef(false);
+
+  const results = useMemo(() => grep(posts, query), [posts, query]);
+
+  useEffect(() => {
+    // 움직임을 줄인 환경에서는 open() 이 첫 질문을 그대로 보여 준다
+    if (!isOpen || reducedMotion()) return;
+    let timer: number;
+    let index = 0;
+    let length = 0;
+    let erasing = false;
+    const step = () => {
+      // 사용자가 입력을 시작하면 지금 질문을 다 보여 준 채로 멈춘다
+      if (touched.current) {
+        setHint(SUGGESTIONS[index]);
+        return;
+      }
+      const text = SUGGESTIONS[index];
+      setSuggestion(text);
+      const last = index === SUGGESTIONS.length - 1;
+      if (!erasing) {
+        length += 1;
+        setHint(text.slice(0, length));
+        if (length < text.length) timer = window.setTimeout(step, TYPE_MS);
+        else if (!last) {
+          erasing = true;
+          timer = window.setTimeout(step, HOLD_MS);
+        }
+      } else {
+        length -= 1;
+        setHint(text.slice(0, length));
+        if (length > 0) timer = window.setTimeout(step, ERASE_MS);
+        else {
+          erasing = false;
+          index += 1;
+          timer = window.setTimeout(step, TYPE_MS * 4);
+        }
+      }
+    };
+    timer = window.setTimeout(step, 300);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
 
   const asking = ask !== null;
   const canAsk = query.trim().length > 0;
@@ -78,6 +139,10 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
     setQuery('');
     setActive(0);
     setAsk(null);
+    setSuggestion(SUGGESTIONS[0]);
+    setHint(reducedMotion() ? SUGGESTIONS[0] : '');
+    touched.current = false;
+    setIsOpen(true);
     d.showModal();
     input.current?.focus();
   };
@@ -110,9 +175,21 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
     dialog.current?.querySelector(`[data-index="${next}"]`)?.scrollIntoView({ block: 'nearest' });
   };
 
+  // 예시 질문을 입력칸에 넣고 '자연어로 묻기' 줄을 골라 둔다. 이어서 Enter 를 누르면 바로 묻는다
+  const fill = () => {
+    touched.current = true;
+    setQuery(suggestion);
+    setAsk(null);
+    setActive(grep(posts, suggestion).length);
+    input.current?.focus();
+  };
+
   const onKeyDown = (e: ReactKeyboardEvent) => {
     if (e.nativeEvent.isComposing) return; // 한글 조합 중 Enter 는 조합을 끝내는 키다
-    if (e.key === 'Escape') {
+    if (e.key === 'Tab' && !e.shiftKey && !query) {
+      e.preventDefault();
+      fill();
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       close();
     } else if (e.key === 'ArrowDown') {
@@ -156,6 +233,7 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
         ref={dialog}
         className="search"
         aria-label="글 검색"
+        onClose={() => setIsOpen(false)}
         // 바깥(어두운 바탕)을 누르면 닫는다
         onClick={(e) => e.target === e.currentTarget && close()}
       >
@@ -173,19 +251,26 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
               value={query}
               onChange={(e) => {
                 const next = e.target.value;
+                touched.current = true;
                 setQuery(next);
                 setAsk(null);
                 // 묻기 줄은 결과 맨 뒤라, 키워드로 맞는 글이 없으면 첫 줄(0)이 곧 묻기 줄이다
                 setActive(0);
               }}
               onKeyDown={onKeyDown}
-              placeholder="키워드나 문장 (예: 보안 관련 글 있어?)"
-              aria-label="검색어"
+              placeholder={hint}
+              aria-label="검색어. 키워드나 문장을 쓰거나 Tab 으로 예시 질문을 넣는다"
               aria-controls="search-results"
               aria-activedescendant={activeId}
               autoComplete="off"
               spellCheck={false}
             />
+            {/* 빈 칸일 때만 보인다. 누르거나 Tab 을 치면 예시 질문이 들어간다(폰은 눌러서) */}
+            {!query && (
+              <button type="button" className="key search__tab" tabIndex={-1} aria-label={`예시 질문 넣기: ${suggestion}`} onClick={fill}>
+                Tab
+              </button>
+            )}
           </label>
 
           <ul id="search-results" className="search__results" role="listbox" aria-label="검색 결과" aria-busy={ask?.status === 'loading'}>
