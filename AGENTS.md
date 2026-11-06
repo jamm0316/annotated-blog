@@ -24,6 +24,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 3. **`main` 이 운영이다.** push 하면 Vercel 이 운영에 배포한다. 쓰다 만 글은 `draft: true` 로 둔다.
 4. 커밋 전에 `npx tsc --noEmit && npm run lint && npm run build` 를 통과시킨다.
 
+## 도메인 spec 과 @MX 주석
+
+코드를 고치기 전에 `.claude/docs/README.md` 와 고칠 도메인의 `.claude/docs/domains/<도메인>.md` 를 먼저 읽는다. 코드 파일 머리의 `@MX:SPEC` 이 그 파일의 도메인을 가리킨다.
+작업이 끝나면 바뀐 사실을 spec 과 `@MX` 주석(`NOTE`·`ANCHOR`·`WARN`·`TODO`)에 같이 반영한다. 규칙은 `.claude/docs/README.md` 에 있다.
+
 ## 글 추가
 
 ```
