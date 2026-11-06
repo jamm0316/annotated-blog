@@ -23,9 +23,15 @@ export default function MuseumPage() {
           <kbd className="key">/</kbd> 부엉이 부르기
         </span>
         <span>
+          <kbd className="key">E</kbd> 유리 돔 열기
+        </span>
+        <span>
+          <kbd className="key">P</kbd> 관람 수첩
+        </span>
+        <span>
           <kbd className="key">Esc</kbd> 말풍선 닫기
         </span>
-        <span>바닥이나 진열대를 누르면 걸어간다</span>
+        <span>바닥이나 진열대를 누르면 걸어간다 · 출구로 나가면 영수증</span>
       </p>
     </main>
   );

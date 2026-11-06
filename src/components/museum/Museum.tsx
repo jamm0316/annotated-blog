@@ -41,6 +41,33 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
     };
   }, [exhibits, router]);
 
+  // 박물관을 떠나는 링크(머리말·모드 메뉴·영수증의 '블로그로 나가기')를 누르면 두루마리처럼 말려 올라간 뒤 이동한다.
+  // 들어올 때 펼쳐지는 움직임은 CSS(.museum 의 museum-unroll)가 맡는다
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let timer = 0;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.('a');
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      // 두루마리(글 읽기)의 '전체 페이지'는 그 위에서 바로 넘어간다
+      if (a.closest('dialog')) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname.startsWith('/museum')) return;
+      const el = root.current;
+      if (!el || el.dataset.leaving) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.dataset.leaving = '1';
+      timer = window.setTimeout(() => router.push(url.pathname + url.search + url.hash), 620);
+    };
+    window.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('click', onClick, true);
+      window.clearTimeout(timer);
+    };
+  }, [router]);
+
   return (
     <div className="museum" ref={root}>
       <p className="museum__loading mono">기록관 문을 여는 중…</p>

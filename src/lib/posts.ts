@@ -7,6 +7,9 @@ const CONTENT_DIR = path.join(process.cwd(), 'content', 'posts');
 
 export type Category = 'note' | 'book';
 
+/** 박물관에서 글을 다 읽고 나오면 부엉이가 내는 한 문제. 보기 셋, answer 는 0부터 센 정답 위치 */
+export type Quiz = { q: string; choices: string[]; answer: number };
+
 export type PostMeta = {
   slug: string;
   title: string;
@@ -34,6 +37,8 @@ export type PostMeta = {
   hook: string;
   /** summary 가 없을 때 대신 타이핑되는 본문 앞부분. 마크다운·태그를 걷어낸 평문 */
   excerpt: string;
+  /** 박물관 퀴즈. 없으면 null */
+  quiz: Quiz | null;
 };
 
 // 한국어는 글자 수로 센다. 코드 블록과 컴포넌트 태그는 뺀다.
@@ -82,6 +87,18 @@ function shortLabel(slug: string, short: unknown, topic: unknown): string {
   return text;
 }
 
+// 퀴즈가 틀린 모양이면 빌드를 멈춘다. 정답은 본문에 있는 내용이어야 한다(에이전트가 본문을 읽고 쓴다)
+function quizOf(slug: string, raw: unknown): Quiz | null {
+  if (raw == null) return null;
+  const q = raw as { q?: unknown; choices?: unknown; answer?: unknown };
+  const choices = Array.isArray(q.choices) ? q.choices.map(String) : [];
+  const answer = Number(q.answer);
+  if (!q.q || choices.length !== 3 || !Number.isInteger(answer) || answer < 0 || answer > 2) {
+    throw new Error(`[posts] ${slug}/index.mdx 의 quiz 는 q, 보기 3개(choices), 0~2 의 answer 가 있어야 한다.`);
+  }
+  return { q: String(q.q), choices, answer };
+}
+
 function readPost(slug: string): PostMeta | null {
   const file = path.join(CONTENT_DIR, slug, 'index.mdx');
   if (!fs.existsSync(file)) return null;
@@ -113,6 +130,7 @@ function readPost(slug: string): PostMeta | null {
     summary: String(data.summary ?? ''),
     hook: String(data.hook ?? ''),
     excerpt: excerpt(content),
+    quiz: quizOf(slug, data.quiz),
   };
 }
 

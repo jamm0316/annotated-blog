@@ -23,7 +23,7 @@ export default async function MuseumReader({ params }: PageProps<'/posts/[slug]'
   const post = getPost(slug);
   if (!post) notFound();
   return (
-    <Reader title={post.title} href={`/posts/${slug}`}>
+    <Reader key={slug} id={slug} title={post.title} href={`/posts/${slug}`}>
       <PostArticle post={post} />
     </Reader>
   );

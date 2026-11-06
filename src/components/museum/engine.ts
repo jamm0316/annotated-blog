@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Exhibit, PropKind } from '@/lib/museum';
+import { loadPassport, READ_EVENT, savePassport, stamp, STAMP_EVENT } from './passport';
 
 // 박물관 모드의 3D 장면과 조작. React 밖에서 three.js 로 그리고, 말풍선 같은 겹친 UI 도 여기서 DOM 으로 만든다.
 // 이 모드만 사이트의 세 가지 색 규칙에서 빠진다(나무·풀·크림 같은 색이 있어야 장난감처럼 보인다).
@@ -12,6 +13,9 @@ export type MuseumOptions = {
   /** 글은 사이트 안에서, 연구실은 새 탭에서 연다 */
   open: (exhibit: Exhibit) => void;
 };
+
+const HALL_NAME = { note: '기술 노트관', lab: '연구실 별관', book: '로비 책장' } as const;
+type TrophyKind = keyof typeof HALL_NAME | 'bug';
 
 const C = {
   floorA: 0xe6cfae,
@@ -41,11 +45,22 @@ const C = {
   belly: 0xf3e6cf,
   beak: 0xffa23c,
   bell: 0xf2c14e,
+  gold: 0xf2b632,
+  cloth: 0xefe2cc,
   sky: 0xf7e7cf,
 };
 
-type Cell = '#' | '.' | 'P' | 'D' | 'B' | 'O' | 'T' | 'C';
-type Spot = { exhibit: Exhibit; tile: [number, number]; focus: THREE.Vector3; ring: THREE.Object3D; group: THREE.Object3D };
+type Cell = '#' | '.' | 'P' | 'D' | 'B' | 'O' | 'T' | 'C' | 'R';
+type Spot = {
+  exhibit: Exhibit;
+  tile: [number, number];
+  focus: THREE.Vector3;
+  ring: THREE.Object3D;
+  group: THREE.Object3D;
+  /** 유리 돔 진열대만. 책장은 null */
+  prop: THREE.Object3D | null;
+  dome: THREE.Object3D | null;
+};
 
 // ── 배치 ────────────────────────────────────────────────────────────
 // 위쪽 왼편 기술 노트관, 오른편 연구실 별관, 아래 로비(리셉션·책장). 글 수에 따라 전시실이 길어진다.
@@ -107,8 +122,15 @@ function layout(exhibits: Exhibit[]) {
     [W - 5, H - 3],
   ];
   plants.forEach(([x, z]) => (grid[z][x] = 'T'));
+  // 명예의 전당: 출구 통로 양옆 받침대 넷. 한 관의 도장을 다 모으거나 버그를 다 잡으면 가림천을 벗는다
+  const trophies = (['note', 'lab', 'book', 'bug'] as const).map((kind, i) => ({
+    kind: kind as TrophyKind,
+    x: [MID - 4, MID - 2, MID + 2, MID + 4][i],
+    z: H - 3,
+  }));
+  trophies.forEach(({ x, z }) => (grid[z][x] = 'R'));
 
-  return { grid, H, zw, spots, shelves, plants, rows };
+  return { grid, H, zw, spots, shelves, plants, rows, trophies };
 }
 
 // ── 재질과 도형 ────────────────────────────────────────────────────
@@ -232,6 +254,26 @@ function prop(k: Kit, kind: PropKind): THREE.Group {
   return g;
 }
 
+// 숨은 버그. 등에 주황 줄무늬가 있는 작은 딱정벌레. 금색으로 만들면 명예의 전당 트로피가 된다
+function makeBug(k: Kit, color: number = C.ink) {
+  const { at, ball, box } = k;
+  const g = new THREE.Group();
+  const shell = at(ball(0.11, color, 16), 0, 0.08, 0);
+  shell.scale.set(1, 0.65, 1.3);
+  g.add(shell, at(box(0.03, 0.02, 0.26, color === C.ink ? C.orange : color), 0, 0.15, 0), at(ball(0.06, color, 12), 0, 0.07, 0.15));
+  [-1, 1].forEach((s) => {
+    [-0.07, 0, 0.07].forEach((z) => {
+      const leg = at(box(0.1, 0.014, 0.014, color), s * 0.11, 0.03, z);
+      leg.rotation.z = s * -0.4;
+      g.add(leg);
+    });
+    const ant = at(box(0.012, 0.012, 0.09, color), s * 0.03, 0.11, 0.22);
+    ant.rotation.set(-0.6, s * 0.4, 0);
+    g.add(ant);
+  });
+  return g;
+}
+
 function makeOwl(k: Kit) {
   const { at, ball, box, cone, torus } = k;
   const owl = new THREE.Group();
@@ -329,15 +371,24 @@ function makePlayer(k: Kit) {
 // ── 장면 ────────────────────────────────────────────────────────────
 export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => void {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const { grid, H, zw, spots: spotDefs, shelves, plants, rows } = layout(options.exhibits);
+  const { grid, H, zw, spots: spotDefs, shelves, plants, rows, trophies: trophyDefs } = layout(options.exhibits);
   const cell = (x: number, z: number): Cell => (x < 0 || z < 0 || x >= W || z >= H ? '#' : grid[z][x]);
   const solid = (x: number, z: number) => cell(x, z) !== '.';
 
   const k = makeKit();
-  const { at, box, cyl, ball, mat } = k;
+  const { at, box, cyl, ball, cone, torus, mat } = k;
+
+  // 들어온 시각에 맞춰 빛을 정한다. 낮은 햇빛, 아침·저녁은 낮게 비치는 노을빛, 밤은 진열대 불빛만. 들어올 때 한 번만 정한다
+  const hour = new Date().getHours();
+  const tod: 'day' | 'dusk' | 'night' = hour >= 19 || hour < 6 ? 'night' : hour < 9 || hour >= 17 ? 'dusk' : 'day';
+  const LIGHT = {
+    day: { sky: C.sky, hemi: [0xfff6e6, 0xb08a64, 1.6], sun: [0xfff1dc, 2], from: [-6, 18, 10] },
+    dusk: { sky: 0xf2c49a, hemi: [0xffe0c0, 0x9a6a4a, 1.3], sun: [0xffa860, 2.1], from: [-15, 9, 6] },
+    night: { sky: 0x1f2540, hemi: [0x8f9fd6, 0x3a2e40, 0.8], sun: [0xa9b8ff, 0.6], from: [8, 18, 6] },
+  }[tod];
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(C.sky);
+  scene.background = new THREE.Color(LIGHT.sky);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
@@ -348,8 +399,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   renderer.domElement.setAttribute('aria-label', '박물관. 방향키나 WASD 로 걷고 Enter 로 말을 건다. / 를 누르면 부엉이를 부른다');
   root.appendChild(renderer.domElement);
 
-  scene.add(new THREE.HemisphereLight(0xfff6e6, 0xb08a64, 1.6));
-  const sun = new THREE.DirectionalLight(0xfff1dc, 2);
+  scene.add(new THREE.HemisphereLight(LIGHT.hemi[0], LIGHT.hemi[1], LIGHT.hemi[2]));
+  const sun = new THREE.DirectionalLight(LIGHT.sun[0], LIGHT.sun[1]);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0008;
@@ -357,7 +408,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const half = Math.max(W, H) / 2 + 2;
   Object.assign(sun.shadow.camera, { left: -half, right: half, top: half, bottom: -half, near: 1, far: 80 });
   sun.shadow.camera.updateProjectionMatrix();
-  sun.position.set(W / 2 - 6, 18, H / 2 + 10);
+  sun.position.set(W / 2 + LIGHT.from[0], LIGHT.from[1], H / 2 + LIGHT.from[2]);
   sun.target.position.set(W / 2, 0, H / 2);
   scene.add(sun, sun.target);
 
@@ -391,6 +442,40 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       rug(1.5, 3 + 3 * r + 0.15, 8, 0.7);
       rug(11.5, 3 + 3 * r + 0.15, 8, 0.7);
     }
+    // 연재: 같은 연재 진열대를 편 순서대로 남색 점선으로 잇고, 받침 앞에 편 번호를 적는다
+    const series = new Map<string, { no: number; x: number; z: number }[]>();
+    spotDefs.forEach(({ exhibit, x, z }) => {
+      if (!exhibit.series) return;
+      const list = series.get(exhibit.series.name) ?? [];
+      list.push({ no: exhibit.series.no, x, z });
+      series.set(exhibit.series.name, list);
+    });
+    g.strokeStyle = hex(C.navy);
+    g.lineWidth = 4;
+    g.lineCap = 'round';
+    g.setLineDash([9, 9]);
+    series.forEach((list) => {
+      if (list.length < 2) return;
+      list.sort((a, b) => a.no - b.no);
+      g.beginPath();
+      list.forEach(({ x, z }, i) => (i ? g.lineTo((x + 0.5) * P, (z + 0.5) * P) : g.moveTo((x + 0.5) * P, (z + 0.5) * P)));
+      g.stroke();
+    });
+    g.setLineDash([]);
+    g.font = `bold 13px monospace`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    series.forEach((list) =>
+      list.forEach(({ no, x, z }) => {
+        if (list.length < 2) return;
+        g.fillStyle = hex(C.navy);
+        g.beginPath();
+        g.arc((x + 0.5) * P, (z + 1.08) * P, 9, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = hex(C.cream);
+        g.fillText(String(no), (x + 0.5) * P, (z + 1.08) * P + 1);
+      }),
+    );
     const t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
@@ -452,13 +537,43 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const ringGeo = new THREE.RingGeometry(0.42, 0.52, 32);
   const ringMat = new THREE.MeshBasicMaterial({ color: C.mark });
   k.disposables.push(glass, domeGeo, ringGeo, ringMat);
+  // 밤에는 유리 돔이 안에서 은은하게 빛나고 받침 아래 불빛이 고인다
+  const pool = new THREE.MeshBasicMaterial({ color: 0xffd28a, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
+  const poolGeo = new THREE.CircleGeometry(0.75, 32);
+  k.disposables.push(pool, poolGeo);
+  if (tod === 'night') {
+    glass.emissive.setHex(0x6a4a20);
+    const lamp = new THREE.PointLight(0xffd28a, 9, 9);
+    lamp.position.set(MID + 0.5, 2.6, zw + 3.2);
+    scene.add(lamp);
+  }
+  const lightPool = (x: number, z: number) => {
+    if (tod !== 'night') return;
+    const m = at(new THREE.Mesh(poolGeo, pool), x, 0.011, z);
+    m.rotation.x = -Math.PI / 2;
+    scene.add(m);
+  };
+  // 가장 최근 글: 위에서 내려오는 빛기둥. 다 읽으면 끈다
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1c4, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const beamGeo = new THREE.CylinderGeometry(0.18, 0.7, 3.4, 24, 1, true);
+  k.disposables.push(beamMat, beamGeo);
+  // forEach 안에서 채우므로 null 로 좁혀지지 않게 적는다
+  let beam = null as THREE.Object3D | null;
+  let newPos = null as THREE.Vector3 | null;
   const spots: Spot[] = [];
   const pickables: THREE.Object3D[] = [floor];
   spotDefs.forEach(({ exhibit, x, z }) => {
     const g = at(new THREE.Group(), x + 0.5, 0, z + 0.5);
     g.add(at(cyl(0.34, 0.38, 0.12, C.woodDark), 0, 0.06, 0), at(cyl(0.27, 0.3, 0.6, C.cream), 0, 0.42, 0));
     g.add(at(cyl(0.34, 0.34, 0.07, C.woodDark), 0, 0.75, 0));
-    g.add(at(prop(k, exhibit.prop), 0, 0.8, 0), at(new THREE.Mesh(domeGeo, glass), 0, 0.78, 0));
+    const pr = at(prop(k, exhibit.prop), 0, 0.8, 0);
+    const dome = at(new THREE.Mesh(domeGeo, glass), 0, 0.78, 0);
+    g.add(pr, dome);
+    lightPool(x + 0.5, z + 0.5);
+    if (exhibit.isNew) {
+      beam = at(new THREE.Mesh(beamGeo, beamMat), x + 0.5, 1.7, z + 0.5);
+      newPos = new THREE.Vector3(x + 0.5, 2.75, z + 0.5);
+    }
     const ring = at(new THREE.Mesh(ringGeo, ringMat), 0, 0.012, 0);
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
@@ -466,7 +581,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     g.userData.exhibit = exhibit;
     scene.add(g);
     pickables.push(g);
-    spots.push({ exhibit, tile: [x, z], focus: new THREE.Vector3(x + 0.5, 1.35, z + 0.5), ring, group: g });
+    spots.push({ exhibit, tile: [x, z], focus: new THREE.Vector3(x + 0.5, 1.35, z + 0.5), ring, group: g, prop: pr, dome });
   });
 
   // 책장 (독후감)
@@ -496,8 +611,61 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     ring.scale.set(1.6, 2.6, 1);
     ring.visible = false;
     scene.add(ring);
-    spots.push({ exhibit, tile: [x, z], focus: new THREE.Vector3(x + 0.5, 2.1, z + 1), ring, group: g });
+    spots.push({ exhibit, tile: [x, z], focus: new THREE.Vector3(x + 0.5, 2.1, z + 1), ring, group: g, prop: null, dome: null });
+    lightPool(x + 0.5 + side * 0.9, z + 1);
+    if (exhibit.isNew) {
+      beam = at(new THREE.Mesh(beamGeo, beamMat), x + 0.5 + side * 0.4, 1.7, z + 1);
+      newPos = new THREE.Vector3(x + 0.5, 3.1, z + 1);
+    }
   });
+  if (beam) scene.add(beam);
+
+  // 명예의 전당. 잠긴 받침대는 가림천을 덮고, 열리면 금 트로피(버그는 금 딱정벌레)가 보인다
+  const trophies = trophyDefs.map(({ kind, x, z }) => {
+    const g = at(new THREE.Group(), x + 0.5, 0, z + 0.5);
+    g.add(at(cyl(0.3, 0.34, 0.5, C.woodDark), 0, 0.25, 0), at(cyl(0.34, 0.34, 0.06, C.cream), 0, 0.53, 0));
+    const cup = at(new THREE.Group(), 0, 0.56, 0);
+    if (kind === 'bug') {
+      const b = makeBug(k, C.gold);
+      b.scale.setScalar(2.2);
+      cup.add(at(cyl(0.14, 0.16, 0.08, C.woodDark), 0, 0.04, 0), at(b, 0, 0.08, 0));
+    } else {
+      cup.add(at(cyl(0.14, 0.16, 0.05, C.woodDark), 0, 0.025, 0), at(cyl(0.035, 0.035, 0.14, C.gold, 10), 0, 0.12, 0));
+      cup.add(at(cyl(0.17, 0.07, 0.24, C.gold), 0, 0.31, 0));
+      [-1, 1].forEach((s) => {
+        const h = at(torus(0.06, 0.018, C.gold), s * 0.17, 0.33, 0);
+        h.rotation.y = Math.PI / 2;
+        cup.add(h);
+      });
+    }
+    const cloth = at(new THREE.Group(), 0, 0.56, 0);
+    cloth.add(at(cone(0.36, 0.62, C.cloth, 18), 0, 0.31, 0), at(ball(0.06, C.cloth, 12), 0, 0.63, 0));
+    g.add(cup, cloth);
+    g.userData.trophy = kind;
+    scene.add(g);
+    lightPool(x + 0.5, z + 0.5);
+    return { kind, x, z, g, cup, cloth, focus: new THREE.Vector3(x + 0.5, 1.6, z + 0.5) };
+  });
+  type Trophy = (typeof trophies)[number];
+
+  // 숨은 버그. 구석·문 옆·리셉션 책상 뒤에 숨겨 두고, 가까이 가면 잡힌다. 잡은 것은 이 브라우저에 남는다
+  const bugs = [
+    { id: 'note-corner', x: 1.35, z: 1.3, r: 0.6 },
+    { id: 'note-door', x: MID - 0.45, z: zw - 0.4, r: -2.2 },
+    { id: 'lab-corner', x: W - 1.4, z: zw - 0.45, r: 2.6 },
+    { id: 'desk', x: MID + 1.9, z: zw + 2.3, r: -0.9 },
+    { id: 'lobby-corner', x: W - 1.45, z: H - 1.45, r: 1.8 },
+  ]
+    .filter((b) => !solid(Math.floor(b.x), Math.floor(b.z)))
+    .map((b) => {
+      const g = at(makeBug(k), b.x, 0, b.z);
+      g.rotation.y = b.r;
+      g.userData.bug = b.id;
+      scene.add(g);
+      pickables.push(g);
+      return { ...b, g, caught: false };
+    });
+  trophies.forEach((t) => pickables.push(t.g));
 
   plants.forEach(([x, z]) => {
     const g = at(new THREE.Group(), x + 0.5, 0, z + 0.5);
@@ -533,7 +701,6 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const owlStand = { x: owlTile.x + 0.5, z: owlTile.z + 2.6 };
 
   const { player, body, legs, arms } = makePlayer(k);
-  at(player, MID + 0.5, 0, H - 2.4);
   player.rotation.y = Math.PI;
   scene.add(player);
 
@@ -564,6 +731,22 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const choices = el('div', 'museum__choices', talk);
   const more = el('span', 'museum__more', talk);
   more.textContent = '▼';
+  if (newPos) tags.push({ text: 'NEW', pos: newPos, e: Object.assign(el('div', 'museum__tag museum__tag--new'), { textContent: 'NEW' }) });
+
+  // 관람 수첩 버튼, 수첩, 알림 한 줄, 퇴장 영수증
+  const hud = el('button', 'museum__hud mono') as HTMLButtonElement;
+  hud.type = 'button';
+  const book = el('div', 'museum__passport');
+  book.hidden = true;
+  book.setAttribute('role', 'dialog');
+  book.setAttribute('aria-label', '관람 수첩');
+  const toast = el('p', 'museum__toast mono');
+  toast.hidden = true;
+  toast.setAttribute('role', 'status');
+  const receipt = el('div', 'museum__receipt');
+  receipt.hidden = true;
+  receipt.setAttribute('role', 'dialog');
+  receipt.setAttribute('aria-label', '관람 영수증');
 
   // ── 상태 ────────────────────────────────────────────────────────
   const keys = new Set<string>();
@@ -578,6 +761,34 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   let after: (() => void) | null = null;
   let greeted = false;
   let disposed = false;
+  let panel = false;
+  let leaving = false;
+  /** 입장 중(문에서 리셉션까지 걸어 들어오는 동안). 걷기 키를 누르면 끝난다 */
+  let intro = !reduce;
+  /** 두루마리에서 도장을 새로 찍은 글. 두루마리를 닫으면 부엉이가 퀴즈를 낸다 */
+  let fresh: string | null = null;
+  let readerOpen = false;
+  const timers: number[] = [];
+  const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(fn, ms));
+  const busy = new Set<Spot>();
+  const visit = { start: new Date(), seen: new Set<string>(), read: new Map<string, number>(), bugs: 0 };
+  let passport = loadPassport();
+  bugs.forEach((b) => {
+    b.caught = passport.bugs.includes(b.id);
+    b.g.visible = !b.caught;
+  });
+  const paused = () => talking || panel || leaving;
+
+  // 한 번만 움직이고 멈추는 짧은 움직임. 움직임을 줄인 환경에서는 바로 끝 상태로 간다
+  const tweens: { t0: number; dur: number; fn: (t: number) => void; done?: () => void }[] = [];
+  function tween(dur: number, fn: (t: number) => void, done?: () => void) {
+    if (reduce) {
+      fn(1);
+      done?.();
+      return;
+    }
+    tweens.push({ t0: performance.now(), dur, fn, done });
+  }
 
   const tileOf = (x: number, z: number) => ({ x: Math.floor(x), z: Math.floor(z) });
 
@@ -669,16 +880,26 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     return moved;
   }
 
-  type Near = { owl: true; focus: THREE.Vector3 } | { owl: false; spot: Spot; focus: THREE.Vector3 };
+  type Near =
+    | { kind: 'owl'; focus: THREE.Vector3 }
+    | { kind: 'spot'; spot: Spot; focus: THREE.Vector3 }
+    | { kind: 'trophy'; trophy: Trophy; focus: THREE.Vector3 };
   function nearby(): Near | null {
     const p = player.position;
     let best: Near | null = null;
     let bd = Infinity;
     const dOwl = Math.hypot(owlTile.x + 0.5 - p.x, owlTile.z + 0.5 - p.z);
     if (dOwl < 2.4) {
-      best = { owl: true, focus: owlFocus };
+      best = { kind: 'owl', focus: owlFocus };
       bd = dOwl;
     }
+    trophies.forEach((trophy) => {
+      const d = Math.hypot(trophy.x + 0.5 - p.x, trophy.z + 0.5 - p.z);
+      if (d < 1.2 && d < bd) {
+        bd = d;
+        best = { kind: 'trophy', trophy, focus: trophy.focus };
+      }
+    });
     spots.forEach((spot) => {
       const [x, z] = spot.tile;
       const d =
@@ -687,7 +908,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
           : Math.hypot(x + 0.5 - p.x, z + 0.5 - p.z);
       if (d < 1.45 && d < bd) {
         bd = d;
-        best = { owl: false, spot, focus: spot.focus };
+        best = { kind: 'spot', spot, focus: spot.focus };
       }
     });
     return best;
@@ -804,11 +1025,21 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     ]);
   }
   function talkOwl() {
+    if (panel) closePanel();
+    const stamped = Object.keys(passport.stamps).length;
+    const newest = spots.find((s) => s.exhibit.isNew && !passport.stamps[s.exhibit.id]);
+    const hello = tod === 'night' ? '늦은 시간에도 오셨네요!' : tod === 'dusk' ? '노을이 예쁜 시간에 오셨네요!' : '어서 오세요!';
     const lines = greeted
       ? ['또 오셨네요! 무엇을 찾으세요?']
       : [
-          '어서 오세요! 여기는 evan.log 기록관이에요. 글 한 편이 진열대 하나예요.',
+          stamped
+            ? `${hello} 다시 오셨네요. 수첩에 도장이 ${stamped}개 모였어요.`
+            : `${hello} 여기는 evan.log 기록관이에요. 글 한 편이 진열대 하나예요.`,
           '위쪽 왼편은 기술 노트관, 오른편은 연구실 별관이에요. 책 이야기는 로비 양옆 책장에 있고요.',
+          ...(newest ? [`새로 들어온 글도 있어요. 빛기둥이 비추는 [${newest.exhibit.short}] 진열대예요.`] : []),
+          ...(stamped
+            ? []
+            : ['글을 끝까지 읽으면 관람 수첩에 도장이 찍혀요. 수첩은 P 나 왼쪽 위 버튼으로 열어요.', '참, 관 어딘가에 버그가 숨어 있대요. 보이면 다가가서 잡아 주세요!']),
           '어디서든 / 를 누르면 제가 날아올게요. 무엇을 찾으세요?',
         ];
     greeted = true;
@@ -873,11 +1104,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
           sub: pick.reason,
           run: () => {
             close();
-            const s = standBy(spot);
-            goTo(s.x, s.z, () => {
-              dir = s.face;
-              placard(spot, pick.reason);
-            });
+            approach(spot, pick.reason);
           },
         })),
         { label: '괜찮아요', run: close },
@@ -885,21 +1112,350 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     );
   }
 
+  function approach(spot: Spot, reason?: string) {
+    const s = standBy(spot);
+    goTo(s.x, s.z, () => {
+      dir = s.face;
+      placard(spot, reason);
+    });
+  }
+
+  function nextInSeries(spot: Spot) {
+    const sr = spot.exhibit.series;
+    if (!sr) return null;
+    return spots.find((s) => s.exhibit.series?.name === sr.name && s.exhibit.series.no === sr.no + 1) ?? null;
+  }
+
   function placard(spot: Spot, reason?: string) {
     const ex = spot.exhibit;
-    say('설명판', [`[${ex.topic}] ${ex.title}${reason ? `\n${reason}` : ''}`], () =>
+    const sr = ex.series;
+    const mark = passport.stamps[ex.id] === 2 ? '금도장' : passport.stamps[ex.id] ? '도장 찍음' : '';
+    const lines = [`[${ex.topic}] ${ex.title}${reason ? `\n${reason}` : ''}`];
+    const extra = [sr ? `${sr.name} 연재 ${sr.no}/${sr.of}편` : '', mark ? `수첩: ${mark}` : ''].filter(Boolean);
+    if (extra.length) lines[0] += `\n${extra.join(' · ')}`;
+    const next = nextInSeries(spot);
+    const list: Choice[] = [
+      {
+        label: ex.external ? '새 탭에서 보기' : '글 읽기',
+        run: () => {
+          close();
+          options.open(ex);
+          // 연구실은 사이트 밖이라 끝까지 봤는지 알 수 없어 열어 보면 도장을 찍는다
+          if (ex.external) stamp(ex.id);
+        },
+      },
+    ];
+    if (spot.dome) list.push({ label: '돔 열어 보기', sub: 'E', run: () => (close(), openDome(spot)) });
+    if (next) list.push({ label: `다음 편 ${sr!.no + 1}/${sr!.of}`, sub: '점선을 따라가요', run: () => (close(), approach(next)) });
+    if (ex.quiz && passport.stamps[ex.id] === 1) list.push({ label: '퀴즈 풀기', run: () => quiz(spot) });
+    list.push({ label: '닫기', run: close });
+    say('설명판', lines, () => ask(list));
+  }
+
+  // ── 진열품이 한 번 움직인다 ─────────────────────────────────────
+  function openDome(spot: Spot) {
+    const { prop: pr, dome } = spot;
+    if (!pr || !dome || busy.has(spot)) return;
+    busy.add(spot);
+    const kind = spot.exhibit.prop;
+    const rotY = pr.rotation.y;
+    const kids = pr.children.map((c) => c.position.y);
+    const ease = (u: number) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
+    tween(
+      1900,
+      (t) => {
+        // 돔이 올라가고(0~0.2) 소품이 움직인 뒤(0.2~0.8) 돔이 내려온다(0.8~1)
+        const lift = t < 0.2 ? Math.sin((t / 0.2) * (Math.PI / 2)) : t > 0.8 ? Math.cos(((t - 0.8) / 0.2) * (Math.PI / 2)) : 1;
+        dome.position.y = 0.78 + lift * 0.6;
+        const u = (t - 0.2) / 0.6;
+        if (kind === 'db') {
+          pr.children.forEach((c, i) => (c.position.y = kids[i] + ease(u * 1.6 - i * 0.3) * 0.14));
+        } else if (kind === 'key') {
+          pr.rotation.x = ease(u) * (Math.PI / 2);
+        } else {
+          pr.position.y = 0.8 + ease(u) * 0.22;
+          pr.rotation.y = rotY + Math.min(1, Math.max(0, u)) * Math.PI * 2;
+        }
+      },
+      () => {
+        dome.position.y = 0.78;
+        pr.position.y = 0.8;
+        pr.rotation.set(0, rotY, 0);
+        pr.children.forEach((c, i) => (c.position.y = kids[i]));
+        busy.delete(spot);
+      },
+    );
+  }
+
+  // ── 수첩·도장·퀴즈 ──────────────────────────────────────────────
+  const hallOf = (h: Exhibit['hall']) => spots.filter((s) => s.exhibit.hall === h);
+  function unlocked(kind: TrophyKind) {
+    if (kind === 'bug') return bugs.length > 0 && bugs.every((b) => b.caught);
+    const list = hallOf(kind);
+    return list.length > 0 && list.every((s) => passport.stamps[s.exhibit.id]);
+  }
+  // 새로 다 모은 관(또는 버그)마다 부엉이가 한 번 축하한다
+  function cheers(): string[] {
+    const lines: string[] = [];
+    trophies.forEach(({ kind }) => {
+      if (!unlocked(kind) || passport.cheered.includes(kind)) return;
+      passport = { ...passport, cheered: [...passport.cheered, kind] };
+      lines.push(
+        kind === 'bug'
+          ? '버그 0건. deploy ok! 출구 옆 명예의 전당에 금 딱정벌레를 올려 뒀어요.'
+          : `${HALL_NAME[kind]} 도장을 다 모았어요! 출구 옆 명예의 전당 가림천을 벗겨 뒀어요.`,
+      );
+    });
+    if (lines.length) savePassport(passport);
+    return lines;
+  }
+
+  function refresh() {
+    passport = loadPassport();
+    const n = Object.keys(passport.stamps).filter((id) => spots.some((s) => s.exhibit.id === id)).length;
+    const left = bugs.filter((b) => !b.caught).length;
+    hud.textContent = `수첩 ${n}/${spots.length}${bugs.length ? ` · 버그 ${left}` : ''}`;
+    hud.setAttribute('aria-label', `관람 수첩 열기. 도장 ${n}개, 남은 버그 ${left}마리. 단축키 P`);
+    trophies.forEach((t) => {
+      const open = unlocked(t.kind);
+      t.cup.visible = open;
+      t.cloth.visible = !open;
+    });
+    const newSpot = spots.find((s) => s.exhibit.isNew);
+    const read = !!(newSpot && passport.stamps[newSpot.exhibit.id]);
+    if (beam) beam.visible = !read;
+    const nt = tags.find((t) => t.text === 'NEW');
+    if (nt) nt.e.dataset.off = read ? '1' : '';
+    if (panel) drawPanel();
+  }
+
+  function quiz(spot: Spot, lead: string[] = []) {
+    const q = spot.exhibit.quiz;
+    if (!q) return lead.length ? say('부엉이', lead) : close();
+    say('부엉이', [...lead, '하나만 물어볼게요. 맞히면 금도장으로 바꿔 드려요.', q.q], () =>
       ask([
-        { label: ex.external ? '새 탭에서 보기' : '글 읽기', run: () => (close(), options.open(ex)) },
-        { label: '닫기', run: close },
+        ...q.choices.map((c, i) => ({
+          label: c,
+          run: () => {
+            if (i !== q.answer) {
+              say('부엉이', ['아쉬워요! 글을 다시 훑어보고 설명판에서 또 도전해 보세요.']);
+              return;
+            }
+            passport = { ...passport, stamps: { ...passport.stamps, [spot.exhibit.id]: 2 } };
+            savePassport(passport);
+            refresh();
+            say('부엉이', ['정답이에요! 금도장으로 바꿔 드렸어요.']);
+          },
+        })),
+        { label: '다음에 풀게요', run: close },
       ]),
     );
+  }
+
+  // 두루마리를 말아 닫고 돌아왔을 때. 새 도장이 있으면 알려 주고 퀴즈를 낸다
+  function afterReader() {
+    const id = fresh;
+    fresh = null;
+    refresh();
+    const lines = cheers();
+    const spot = id ? spots.find((s) => s.exhibit.id === id) : null;
+    if (spot) quiz(spot, [`도장 쾅! [${spot.exhibit.short}] 을(를) 수첩에 찍었어요.`, ...lines]);
+    else if (lines.length) say('부엉이', lines);
+  }
+
+  function drawPanel() {
+    book.replaceChildren();
+    const head = el('div', 'museum__book-head', book);
+    const title = el('strong', '', head);
+    title.textContent = '관람 수첩';
+    const x = el('button', 'museum__x mono', head) as HTMLButtonElement;
+    x.type = 'button';
+    x.textContent = '닫기 Esc';
+    x.addEventListener('click', closePanel);
+    (['note', 'lab', 'book'] as const).forEach((h) => {
+      const list = hallOf(h);
+      if (!list.length) return;
+      const got = list.filter((s) => passport.stamps[s.exhibit.id]).length;
+      const sec = el('section', 'museum__hall', book);
+      const h3 = el('h3', 'mono', sec);
+      h3.textContent = `${HALL_NAME[h]} ${got}/${list.length}`;
+      const grid = el('div', 'museum__stamps', sec);
+      list.forEach((spot) => {
+        const st = passport.stamps[spot.exhibit.id];
+        const b = el('button', 'museum__stamp', grid) as HTMLButtonElement;
+        b.type = 'button';
+        b.dataset.state = st === 2 ? 'gold' : st ? 'on' : '';
+        b.title = spot.exhibit.title;
+        const seal = el('span', 'museum__seal mono', b);
+        seal.textContent = st === 2 ? '金' : st ? '印' : '';
+        seal.setAttribute('aria-hidden', 'true');
+        const name = el('span', '', b);
+        name.textContent = spot.exhibit.short;
+        b.setAttribute('aria-label', `${spot.exhibit.short}: ${st === 2 ? '금도장' : st ? '도장' : '아직'}. 누르면 진열대로 걸어간다`);
+        b.addEventListener('click', () => {
+          closePanel();
+          glow((s) => s === spot);
+          approach(spot);
+        });
+      });
+    });
+    const foot = el('p', 'museum__book-foot mono', book);
+    foot.textContent = '끝까지 읽은 글은 印, 부엉이 퀴즈까지 맞히면 金. 연구실은 열어 보면 찍혀요.';
+  }
+  function openPanel() {
+    if (talking) close();
+    panel = true;
+    keys.clear();
+    path = [];
+    drawPanel();
+    book.hidden = false;
+    (book.querySelector('.museum__stamp') as HTMLElement | null)?.focus({ preventScroll: true });
+  }
+  function closePanel() {
+    panel = false;
+    book.hidden = true;
+    renderer.domElement.focus({ preventScroll: true });
+  }
+  hud.addEventListener('click', () => (panel ? closePanel() : openPanel()));
+
+  function catchBug(b: (typeof bugs)[number]) {
+    if (b.caught) return;
+    b.caught = true;
+    visit.bugs++;
+    const before = bugs.filter((x) => !x.caught).length + 1;
+    passport = loadPassport();
+    savePassport({ ...passport, bugs: [...new Set([...passport.bugs, b.id])] });
+    const y0 = b.g.position.y;
+    tween(
+      420,
+      (t) => {
+        b.g.position.y = y0 + Math.sin(t * Math.PI) * 0.35;
+        b.g.scale.setScalar(1 - t);
+      },
+      () => (b.g.visible = false),
+    );
+    showToast(`bug: ${before} → ${before - 1}${before - 1 === 0 ? '  ·  0 bugs. deploy ok' : ''}`);
+    refresh();
+    const lines = cheers();
+    if (lines.length) later(() => say('부엉이', lines), 500);
+  }
+  let toastTimer = 0;
+  function showToast(text: string) {
+    toast.textContent = text;
+    toast.hidden = false;
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => (toast.hidden = true), 2600);
+  }
+
+  // ── 퇴장 영수증 ─────────────────────────────────────────────────
+  function receiptLines() {
+    const hm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const mins = Math.max(1, Math.round((Date.now() - visit.start.getTime()) / 60000));
+    const n = Object.keys(passport.stamps).filter((id) => spots.some((s) => s.exhibit.id === id)).length;
+    const gold = Object.values(passport.stamps).filter((v) => v === 2).length;
+    let top = '';
+    let topMs = 0;
+    visit.read.forEach((ms, id) => {
+      if (ms > topMs) {
+        topMs = ms;
+        top = spots.find((s) => s.exhibit.id === id)?.exhibit.title ?? '';
+      }
+    });
+    const row = (k: string, v: string) => `${k.padEnd(9, '　')}${v}`;
+    return [
+      'evan.log 기록관 · 관람 영수증',
+      '--------------------------------',
+      row('입장', hm(visit.start)),
+      row('머문 시간', `${mins}분`),
+      row('둘러본 진열대', `${visit.seen.size}곳`),
+      row('읽은 글', `${visit.read.size}편`),
+      row('잡은 버그', `${visit.bugs}마리`),
+      row('수첩 도장', `${n} / ${spots.length}${gold ? ` (금 ${gold})` : ''}`),
+      ...(top ? ['가장 오래 본 글', `  ${top}`] : []),
+      '--------------------------------',
+      'EOF',
+    ];
+  }
+  function showReceipt() {
+    leaving = true;
+    keys.clear();
+    path = [];
+    near.hidden = true;
+    receipt.replaceChildren();
+    const paper = el('pre', 'museum__slip mono', receipt);
+    paper.textContent = receiptLines().join('\n');
+    const row = el('div', 'museum__choices', receipt);
+    const btn = (label: string, run: () => void) => {
+      const b = el('button', 'museum__choice', row) as HTMLButtonElement;
+      b.type = 'button';
+      b.textContent = label;
+      b.addEventListener('click', run);
+      return b;
+    };
+    btn('계속 둘러보기', stay).focus({ preventScroll: true });
+    btn('이미지로 저장', () => saveReceipt(paper));
+    const out = el('a', 'museum__choice', row) as HTMLAnchorElement;
+    out.href = '/';
+    out.textContent = '블로그로 나가기';
+    receipt.hidden = false;
+  }
+  function stay() {
+    receipt.hidden = true;
+    leaving = false;
+    player.position.z = H - 1.9;
+    dir = Math.PI;
+    renderer.domElement.focus({ preventScroll: true });
+  }
+  function saveReceipt(src: HTMLElement) {
+    const lines = receiptLines();
+    const cs = getComputedStyle(src);
+    const cv = document.createElement('canvas');
+    const scale = 2;
+    const w = 420;
+    const lh = 26;
+    const h = 48 + lines.length * lh;
+    cv.width = w * scale;
+    cv.height = h * scale;
+    const g = cv.getContext('2d');
+    if (!g) return;
+    g.scale(scale, scale);
+    g.fillStyle = '#fff8ec';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#3a2a20';
+    g.font = `15px ${cs.fontFamily}`;
+    g.textBaseline = 'top';
+    lines.forEach((line, i) => g.fillText(line, 24, 24 + i * lh));
+    cv.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'evan-log-museum-receipt.png';
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
   }
 
   function interact() {
     const n = nearby();
     if (!n) return;
-    if (n.owl) talkOwl();
-    else placard(n.spot);
+    if (n.kind === 'owl') talkOwl();
+    else if (n.kind === 'spot') placard(n.spot);
+    else trophyTalk(n.trophy);
+  }
+  function trophyTalk(t: Trophy) {
+    const name = t.kind === 'bug' ? '숨은 버그' : HALL_NAME[t.kind];
+    if (unlocked(t.kind)) {
+      say('명예의 전당', [t.kind === 'bug' ? '숨은 버그를 모두 잡은 분께 드리는 금 딱정벌레예요.' : `${name}의 글을 모두 읽은 분께 드리는 트로피예요. 고마워요!`]);
+      return;
+    }
+    if (t.kind === 'bug') {
+      const got = bugs.filter((b) => b.caught).length;
+      say('명예의 전당', [`가림천이 덮여 있어요. 숨은 버그 ${bugs.length}마리 중 ${got}마리를 잡았어요.`]);
+      return;
+    }
+    const list = hallOf(t.kind);
+    const got = list.filter((s) => passport.stamps[s.exhibit.id]).length;
+    say('명예의 전당', [`가림천이 덮여 있어요. ${name} 도장 ${got}/${list.length}개. 다 모으면 열려요.`]);
   }
 
   // ── 입력 ────────────────────────────────────────────────────────
@@ -921,6 +1477,22 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     // 글 읽기 창·그림 확대 창이 떠 있으면 걷지 않는다
     if (document.querySelector('dialog[open]')) return keys.clear();
     const inField = typingInto(e.target);
+    if (leaving) {
+      if (e.key === 'Escape') stay();
+      return;
+    }
+    if (panel) {
+      if (e.key === 'Escape' || e.code === 'KeyP') {
+        e.preventDefault();
+        closePanel();
+      }
+      return;
+    }
+    if (e.code === 'KeyP' && !inField && !talking) {
+      e.preventDefault();
+      openPanel();
+      return;
+    }
     if (e.key === 'Escape' && talking) {
       e.preventDefault();
       close();
@@ -954,7 +1526,13 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       keys.add(k);
       path = [];
       arrive = null;
+      intro = false;
       e.preventDefault();
+      return;
+    }
+    if (e.code === 'KeyE') {
+      const n = nearby();
+      if (n?.kind === 'spot') openDome(n.spot);
       return;
     }
     if (e.key === 'Enter' || e.key === ' ') {
@@ -977,15 +1555,30 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   const ray = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   function onClick(e: MouseEvent) {
-    if (talking) return;
+    if (paused()) return;
     const r = renderer.domElement.getBoundingClientRect();
     mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(mouse, camera);
     const hit = ray.intersectObjects(pickables, true)[0];
     if (!hit) return;
     let o: THREE.Object3D | null = hit.object;
-    while (o && !o.userData.exhibit && !o.userData.owl && !o.userData.floor) o = o.parent;
+    while (o && !o.userData.exhibit && !o.userData.owl && !o.userData.floor && !o.userData.trophy && !o.userData.bug) o = o.parent;
     if (!o) return;
+    intro = false;
+    if (o.userData.bug) {
+      const b = bugs.find((x) => x.g === o);
+      if (b) goTo(b.x, b.z);
+      return;
+    }
+    if (o.userData.trophy) {
+      const t = trophies.find((x) => x.g === o);
+      if (t)
+        goTo(t.x + 0.5, t.z - 0.5, () => {
+          dir = Math.PI;
+          trophyTalk(t);
+        });
+      return;
+    }
     if (o.userData.owl) {
       goTo(owlStand.x, owlStand.z, () => {
         dir = Math.PI;
@@ -995,12 +1588,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     }
     if (o.userData.exhibit) {
       const spot = spots.find((s) => s.group === o);
-      if (!spot) return;
-      const s = standBy(spot);
-      goTo(s.x, s.z, () => {
-        dir = s.face;
-        placard(spot);
-      });
+      if (spot) approach(spot);
       return;
     }
     goTo(hit.point.x, hit.point.z);
@@ -1057,14 +1645,28 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   function frame(now: number) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    // 글 읽기 창이 장면을 덮고 있는 동안은 그리지 않는다
+    // 글 읽기 창이 장면을 덮고 있는 동안은 그리지 않는다. 닫히면 새 도장을 알려 준다
     if (document.querySelector('dialog[open]')) {
+      readerOpen = true;
       raf = requestAnimationFrame(frame);
       return;
     }
+    if (readerOpen) {
+      readerOpen = false;
+      afterReader();
+    }
+    for (let i = tweens.length - 1; i >= 0; i--) {
+      const tw = tweens[i];
+      const t = Math.min(1, (now - tw.t0) / tw.dur);
+      tw.fn(t);
+      if (t >= 1) {
+        tweens.splice(i, 1);
+        tw.done?.();
+      }
+    }
     let dx = 0;
     let dz = 0;
-    if (!talking) {
+    if (!paused()) {
       if (keys.has('left')) dx -= 1;
       if (keys.has('right')) dx += 1;
       if (keys.has('up')) dz -= 1;
@@ -1088,6 +1690,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       }
     }
     let moved = false;
+    const southward = dz > 0;
     if (dx || dz) {
       const n = Math.hypot(dx, dz);
       const sp = 3.6 * dt;
@@ -1115,20 +1718,29 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     const lookAt = player.position.distanceTo(owl.position) < 6 ? THREE.MathUtils.clamp(toP, -0.9, 0.9) : 0;
     owlHead.rotation.y += reduce ? lookAt - owlHead.rotation.y : (lookAt - owlHead.rotation.y) * Math.min(1, dt * 5);
 
+    // 버그는 가까이 가면 잡힌다. 출구 문턱을 넘어가면 영수증을 뽑는다
+    if (moved) {
+      bugs.forEach((b) => {
+        if (!b.caught && Math.hypot(b.x - player.position.x, b.z - player.position.z) < 0.6) catchBug(b);
+      });
+      if (!intro && southward && player.position.z > H - 0.75) showReceipt();
+    }
+
     placeCamera(false);
     renderer.render(scene, camera);
 
-    tags.forEach((t) => (t.e.hidden = !project(t.pos, t.e)));
-    const n = talking ? null : nearby();
+    tags.forEach((t) => (t.e.hidden = t.e.dataset.off === '1' || !project(t.pos, t.e)));
+    const n = paused() || intro ? null : nearby();
     if (n) {
-      const key = n.owl ? 'owl' : n.spot.exhibit.id;
+      const key = n.kind === 'owl' ? 'owl' : n.kind === 'spot' ? n.spot.exhibit.id : `trophy:${n.trophy.kind}`;
       if (key !== nearKey) {
         nearKey = key;
+        if (n.kind === 'spot') visit.seen.add(n.spot.exhibit.id);
         near.replaceChildren();
         const label = document.createElement('strong');
-        label.textContent = n.owl ? '부엉이' : n.spot.exhibit.short;
+        label.textContent = n.kind === 'owl' ? '부엉이' : n.kind === 'spot' ? n.spot.exhibit.short : '명예의 전당';
         const hint = document.createElement('span');
-        hint.textContent = n.owl ? 'Enter 말 걸기' : 'Enter 설명 보기';
+        hint.textContent = n.kind === 'owl' ? 'Enter 말 걸기' : n.kind === 'trophy' ? 'Enter 보기' : n.spot.dome ? 'Enter 설명 · E 돔 열기' : 'Enter 설명 보기';
         near.append(label, hint);
       }
       near.hidden = !project(n.focus, near);
@@ -1138,13 +1750,51 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     }
     raf = requestAnimationFrame(frame);
   }
+  // 두루마리에서 도장이 찍히면 기억해 뒀다가 닫을 때 알리고, 펼쳐 둔 시간은 영수증에 쓴다
+  const onStamp = (e: Event) => {
+    const id = (e as CustomEvent<string>).detail;
+    const spot = spots.find((s) => s.exhibit.id === id);
+    if (!spot) return;
+    if (spot.exhibit.external) {
+      refresh();
+      const lines = cheers();
+      if (lines.length) later(() => say('부엉이', lines), 400);
+    } else fresh = id;
+  };
+  const onRead = (e: Event) => {
+    const { id, ms } = (e as CustomEvent<{ id: string; ms: number }>).detail;
+    visit.read.set(id, (visit.read.get(id) ?? 0) + ms);
+  };
+  window.addEventListener(STAMP_EVENT, onStamp);
+  window.addEventListener(READ_EVENT, onRead);
+  refresh();
+
+  // 입장: 문턱에서 리셉션까지 걸어 들어온 뒤 부엉이가 말을 건다(두루마리가 다 펼쳐질 즈음 출발).
+  // 움직임을 줄인 환경에서는 바로 부엉이 앞에 선다
+  if (reduce) player.position.set(owlStand.x, 0, owlStand.z);
+  else player.position.set(MID + 0.5, 0, H - 0.45);
+  placeCamera(true);
+  later(
+    () => {
+      if (reduce) return talkOwl();
+      if (!intro) return;
+      goTo(owlStand.x, owlStand.z, () => {
+        intro = false;
+        dir = Math.PI;
+        later(talkOwl, 250);
+      });
+    },
+    reduce ? 400 : 1000,
+  );
   raf = requestAnimationFrame(frame);
-  const hello = window.setTimeout(talkOwl, 600);
 
   return () => {
     disposed = true;
     cancelAnimationFrame(raf);
-    window.clearTimeout(hello);
+    timers.forEach((t) => window.clearTimeout(t));
+    window.clearTimeout(toastTimer);
+    window.removeEventListener(STAMP_EVENT, onStamp);
+    window.removeEventListener(READ_EVENT, onRead);
     stopTyping();
     ro.disconnect();
     window.removeEventListener('keydown', onKeyDown);
