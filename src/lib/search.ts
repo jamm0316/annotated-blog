@@ -1,7 +1,11 @@
+// @MX:NOTE: 검색 대상(공개 글 + 연구실) 목록과 자연어 검색에 넘길 카탈로그 문자열을 만든다
+// @MX:SPEC: .claude/docs/domains/search.md
 import { LAB } from '@/lib/lab';
 import { getPosts } from '@/lib/posts';
 
 // 검색(키워드·자연어)이 찾는 대상: 공개 글과 연구실 항목을 한 목록으로 묶는다.
+// @MX:ANCHOR: id 형식(글은 slug, 연구실은 'lab:<repo>')과 필드가 /api/ask 응답 모양이다
+// @MX:REASON: layout.tsx·SearchPalette·api/ask 가 이 타입에 기대고, 박물관 엔진은 /api/ask 의 id 를 Exhibit.id(같은 형식)와 맞춰 찾는다
 export type SearchItem = {
   /** 글은 slug, 연구실은 'lab:<repo>' */
   id: string;

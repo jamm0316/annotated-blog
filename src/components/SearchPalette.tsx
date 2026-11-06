@@ -1,4 +1,6 @@
 'use client';
+// @MX:NOTE: '/'·⌘K 로 여는 검색 팔레트. 키워드는 클라이언트에서 grep, '자연어로 묻기' 줄만 /api/ask 를 부른다
+// @MX:SPEC: .claude/docs/domains/search.md
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -11,6 +13,8 @@ const LATEST = 8;
 
 // 검색창을 열면 입력칸에 타이핑됐다 지워지는 예시 질문. 실제 글로 답이 나오는 것만 둔다.
 // 한 바퀴만 돌고 마지막 질문에서 멈춘다(반복 애니메이션 금지). Tab 을 누르면 지금 보이는 질문이 들어간다.
+// @MX:WARN: 실제 글로 답이 나오는 질문만 둔다
+// @MX:REASON: 예시를 그대로 Enter 로 AI 에 물으므로, 맞는 글이 없는 질문이면 첫 경험이 '못 찾았다'가 된다(AGENTS.md 규칙)
 const SUGGESTIONS = [
   '보안 관련 글 있어?',
   '캐시를 더 자세히 다룬 글이 있어?',
@@ -149,6 +153,8 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
         if (dialog.current?.open) close();
         else open();
         // 박물관에서는 '/' 가 부엉이를 부른다(⌘K 는 그대로 검색)
+        // @MX:WARN: /museum 제외 조건을 지우면 박물관에서 '/' 한 번에 팔레트와 부엉이가 함께 열린다
+        // @MX:REASON: museum 엔진도 window keydown 으로 '/' 를 받는다
       } else if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target) && !window.location.pathname.startsWith('/museum')) {
         e.preventDefault();
         open();
