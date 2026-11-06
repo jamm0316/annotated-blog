@@ -1644,9 +1644,6 @@ button:active:not(:disabled) {
 .search__prompt input::placeholder {
   color: var(--ink-70);
 }
-.search__prompt input::-webkit-search-cancel-button {
-  display: none;
-}
 .search__results {
   list-style: none;
   margin: 0;

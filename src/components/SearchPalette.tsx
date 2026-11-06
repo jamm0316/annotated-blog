@@ -82,7 +82,10 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
 
   const onKeyDown = (e: ReactKeyboardEvent) => {
     if (e.nativeEvent.isComposing) return; // 한글 조합 중 Enter 는 조합을 끝내는 키다
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       move(1);
     } else if (e.key === 'ArrowUp') {
@@ -117,7 +120,10 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
             </span>
             <input
               ref={input}
-              type="search"
+              // type="search" 는 Esc 를 처음 누르면 글자만 지우고 창을 닫지 않아 text 로 둔다
+              type="text"
+              inputMode="search"
+              enterKeyHint="go"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
