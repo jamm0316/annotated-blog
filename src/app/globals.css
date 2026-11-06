@@ -1720,6 +1720,15 @@ button:active:not(:disabled) {
     height: 36px;
   }
 }
+/* 360px 폰에서도 머리말 한 줄에 다 들어가게 메뉴 사이를 좁힌다 */
+@media (max-width: 400px) {
+  .site-nav {
+    gap: 8px;
+  }
+  .site-header__inner {
+    gap: 8px;
+  }
+}
 @media (hover: none) {
   .search__hint span:last-child {
     display: none;
