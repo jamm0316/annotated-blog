@@ -10,12 +10,41 @@ const MODES = [
   { href: '/museum', label: '박물관', note: '3D 기록관' },
 ] as const;
 
+// 처음 온 방문자에게 한 번만 박물관 모드를 알리는 말풍선. 이 브라우저에서 한 번 보이면 다시 띄우지 않는다
+const HINT_KEY = 'evan-log:museum-hint';
+
 // 머리말 오른쪽 끝의 모드 고르기. 읽기(글 목록)와 박물관(3D 기록관) 사이를 오간다.
 export function ModeMenu() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [hint, setHint] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const current = pathname.startsWith('/museum') ? MODES[1] : MODES[0];
+
+  useEffect(() => {
+    // 박물관에 바로 들어온 사람에게는 알릴 필요가 없다
+    if (pathname.startsWith('/museum')) return;
+    let seen = true;
+    try {
+      seen = localStorage.getItem(HINT_KEY) === '1';
+      if (!seen) localStorage.setItem(HINT_KEY, '1');
+    } catch {}
+    if (seen) return;
+    // 첫 화면 입장이 끝난 뒤에 띄운다
+    const t = window.setTimeout(() => setHint(true), 900);
+    return () => window.clearTimeout(t);
+    // 첫 방문 한 번만 본다. 경로가 바뀌어도 다시 재지 않는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hint) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHint(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [hint]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,7 +70,10 @@ export function ModeMenu() {
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={`모드: ${current.label}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setHint(false);
+          setOpen((o) => !o);
+        }}
       >
         {/* 좁은 폰에서는 글자 대신 박공지붕 건물 아이콘만 보인다 */}
         <svg className="mode__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
@@ -51,6 +83,20 @@ export function ModeMenu() {
           <span className="mode__label">모드</span> {current.label} <span aria-hidden="true">▾</span>
         </span>
       </button>
+      {hint && !open && !pathname.startsWith('/museum') && (
+        <div className="mode__hint" role="status">
+          <p className="mode__hint-title mono">NEW · 박물관 모드</p>
+          <p className="mode__hint-text">블로그를 걸어 다니며 직접 둘러보세요. 부엉이가 글을 찾아 줘요.</p>
+          <div className="mode__hint-actions mono">
+            <Link href="/museum" className="mode__hint-go" onClick={() => setHint(false)}>
+              둘러보기 →
+            </Link>
+            <button type="button" className="mode__hint-close" onClick={() => setHint(false)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
       {open && (
         <ul className="mode__menu" role="list">
           {MODES.map((m) => (

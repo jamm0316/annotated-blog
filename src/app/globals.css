@@ -2205,6 +2205,69 @@ button:active:not(:disabled) {
   background: var(--line);
   outline: none;
 }
+/* 첫 방문 때 한 번 뜨는 박물관 모드 안내 말풍선. 꼬리가 모드 버튼을 가리킨다 */
+.mode__hint {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  z-index: 21;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+.mode__hint::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 18px;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--accent);
+  border-left: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+.mode__hint p {
+  margin: 0;
+}
+.mode__hint-title {
+  font-size: 12px;
+  color: var(--accent);
+}
+.mode__hint-text {
+  margin-top: 6px !important;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.mode__hint-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.mode__hint-go {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mode__hint-close {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink-70);
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mode__hint {
+    animation: rise var(--dur-slow) var(--ease-out);
+  }
+}
 @media (max-width: 760px) {
   .mode__label {
     display: none;
