@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 머리말 오른쪽 끝 모드 메뉴(읽기 ↔ 박물관)와 첫 방문 박물관 안내 말풍선. 좁은 폰에서는 테마 바꾸기도 여기로 온다
+// @MX:SPEC: .claude/docs/domains/shell.md
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';

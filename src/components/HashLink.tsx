@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 머리말의 /#note 같은 해시 링크. 첫 화면에서는 hashchange 가 나도록 location.hash 를 직접 바꾼다
+// @MX:SPEC: .claude/docs/domains/browse.md
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { MouseEvent, ReactNode } from 'react';

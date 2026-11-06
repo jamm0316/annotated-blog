@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 물방울 탭(LiquidTabs, 하나만 고름)과 칩(LiquidChips, 여러 개 고름)
+// @MX:SPEC: .claude/docs/domains/browse.md
+
 import { useLayoutEffect, useRef, type CSSProperties } from 'react';
 
 export type TabItem = { value: string; label: string; count?: number };
@@ -68,6 +71,8 @@ export function LiquidTabs({ items, value, onChange, label, size = 'lg', drip = 
       }
     };
 
+    // @MX:WARN: place 가 이 changed 를 클로저로 읽는다. place(true) 보다 먼저 계산해야 한다
+    // @MX:REASON: place(true) 뒤로 옮기면 drip 탭에서 TDZ ReferenceError 가 난다
     const changed = prevValue.current !== value;
     prevValue.current = value;
     place(true);

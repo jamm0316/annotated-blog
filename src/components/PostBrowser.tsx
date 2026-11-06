@@ -1,5 +1,8 @@
 'use client';
 
+// @MX:NOTE: 첫 화면 목록. 큰 분류 탭·주제 칩 필터, 주소 해시 동기화, j/k 키 이동, 행 미리보기 타이핑
+// @MX:SPEC: .claude/docs/domains/browse.md
+
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type PointerEvent } from 'react';
 import { AREAS } from '@/lib/areas';
@@ -85,6 +88,8 @@ export function PostBrowser({ posts, lab }: { posts: BrowserPost[]; lab: LabItem
       const t = e.target;
       if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (document.querySelector('dialog[open]')) return;
+      // @MX:WARN: 다른 파일의 클래스 이름에 기댄다(.row 는 PostRow, .lab-card__link 는 LabGrid)
+      // @MX:REASON: 어느 한쪽 클래스 이름을 바꾸면 오류 없이 j/k 이동만 조용히 끊긴다
       const items = [...document.querySelectorAll<HTMLElement>('#posts .row, #posts .lab-card__link')];
       if (items.length === 0) return;
       e.preventDefault();

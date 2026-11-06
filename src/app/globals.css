@@ -1,3 +1,8 @@
+/* @MX:NOTE: 사이트 전체 스타일과 디자인 토큰. 섹션마다 소유 도메인이 다르다(섹션 지도는 shell spec) */
+/* @MX:SPEC: .claude/docs/domains/shell.md */
+
+/* @MX:ANCHOR: 디자인 토큰(--bg, --ink, --ink-70, --line, --accent, --dur-*, --ease-* …). 값을 직접 쓰지 말고 이 변수를 쓴다 */
+/* @MX:REASON: 이 파일의 모든 도메인 섹션(browse·lab·posts·playgrounds·search·shell)이 기댄다. 밝음 값은 아래 :root[data-theme='light'] 에서 함께 고친다 */
 /* 디자인 토큰. 색은 바탕·글자·강조 세 가지뿐이다. 다크(기본)는 검정 + 흰 글자 + 주황, 밝음은 크림 + 짙은 회색 글자 + 남색. */
 :root {
   --black: #0b0b0b;
@@ -119,6 +124,8 @@ button:active:not(:disabled) {
   }
 }
 
+/* @MX:WARN: 빗방울 수 18(--rain-0…17, rain-0…17, mask 18장, animation 18줄)은 ThemeToggle.tsx 의 DROPS 와 같아야 한다 */
+/* @MX:REASON: 개수가 어긋나면 방울이 빠지거나 화면 가운데에 몰려 떨어진다. 넷 중 하나만 늘리면 나머지가 따라오지 않는다 */
 /* 테마 전환: 빗방울이 화면 곳곳에 산발적으로 떨어지고, 떨어진 자리마다 새 색이 번져 서로 이어지며 화면을 덮는다.
    방울은 먼저 작게 맺혔다가(톡) 넓게 번진다. 떨어지는 자리는 ThemeToggle 이 매번 무작위로 넣는다(--rx-n, --ry-n).
    마지막 방울까지 다 번지면 전체가 새 색이다. 반지름은 방울마다 따로 움직여야 해서 방울 수만큼 변수를 둔다. */
@@ -465,6 +472,8 @@ button:active:not(:disabled) {
   }
 }
 
+/* @MX:NOTE: 여기부터 첫 화면·목록 스타일(browse 도메인). .row 는 Droplets 의 RIPPLE·FILL 대상이라 position: relative; overflow: hidden 을 지킨다 */
+/* @MX:SPEC: .claude/docs/domains/browse.md */
 /* 첫 화면 */
 .hero {
   padding: 120px 0 40px;
@@ -672,6 +681,7 @@ button:active:not(:disabled) {
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 
+/* @MX:SPEC: .claude/docs/domains/lab.md */
 /* 연구실: 썸네일 카드 두 줄. 손을 올리면 화면이 물 위로 떠오르듯 살짝 올라오고, 바탕은 손이 들어온 자리에서 차오른다 */
 .lab {
   list-style: none;
@@ -2286,6 +2296,8 @@ button:active:not(:disabled) {
   white-space: nowrap;
 }
 
+/* @MX:NOTE: 여기부터 박물관 모드 스타일(museum 도메인). --m-* 토큰은 museum 소속이고 박물관 밖에서는 쓰지 않는다. 단, 뒤쪽 .mode__icon·.mode__theme·460px 규칙은 shell 의 모드 메뉴다 */
+/* @MX:SPEC: .claude/docs/domains/museum.md */
 /* ── 박물관 모드 ──
    이 모드만 세 가지 색 규칙에서 빠진다. 장난감 같은 3D 기록관이라 나무·풀·크림 색이 필요하다.
    색은 아래 --m-* 토큰으로만 쓰고, 사이트의 다른 화면에는 쓰지 않는다. */
@@ -2884,6 +2896,8 @@ button.mode__item {
   }
 }
 
+/* @MX:NOTE: 두루마리 읽기(museum 도메인). 종이 안에서 사이트 토큰(--bg·--ink…)을 --m-* 종이 색으로 덮어쓴다 */
+/* @MX:SPEC: .claude/docs/domains/museum.md */
 /* 박물관 글 읽기 두루마리. 박물관 모드라 --m-* 색을 쓴다.
    종이 안에서는 사이트 토큰(--bg·--ink…)을 종이 색으로 바꿔 글 본문 스타일을 그대로 쓴다. 코드 블록은 늘 어둡다.
    대비(종이 #fbf0dc 기준): 글자 #3a2a20 13.0, 75% 글자 5.9, 남색 #2b3a67 10.1 */

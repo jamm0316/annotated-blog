@@ -1,3 +1,6 @@
+// @MX:NOTE: 루트 레이아웃. 글꼴 세 벌, 테마 깜빡임 막는 스크립트, 머리말·바닥글, 전역 Droplets·Analytics
+// @MX:SPEC: .claude/docs/domains/shell.md
+
 import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR, Noto_Serif_KR } from 'next/font/google';
 import Link from 'next/link';
@@ -39,6 +42,8 @@ export const metadata: Metadata = {
 };
 
 // 첫 화면이 그려지기 전에 저장된 테마를 적용해 깜빡임을 막는다. 기본은 다크(검정).
+// @MX:WARN: localStorage 키 'theme' 과 값 'light' 는 ThemeToggle.toggleTheme 이 쓰는 것과 같아야 한다
+// @MX:REASON: 한쪽만 바꾸면 새로고침 때 고른 테마가 풀리고, 이 스크립트가 data-theme 를 바꾸므로 <html> 의 suppressHydrationWarning 도 빼면 안 된다
 const themeScript = `try{if(localStorage.getItem('theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

@@ -1,6 +1,11 @@
+// @MX:NOTE: 연구실 실험 목록. 새 실험은 LAB 에 한 항목 + public/lab/<repo>.png(1200×750)
+// @MX:SPEC: .claude/docs/domains/lab.md
+
 // 연구실: GitHub Pages 에 올려 둔 작은 실험들과, 로컬에서만 도는 도구. 새로 올리면 여기에 한 줄 더하고 썸네일을 public/lab/<repo>.png 로 둔다.
 // 썸네일은 1200×750 화면을 그대로 찍은 것. 설명의 사실은 저장소 README 와 페이지에 적힌 것만 쓴다.
 
+// @MX:ANCHOR: 연구실 항목의 필드 계약
+// @MX:REASON: LabGrid·PostBrowser(kind 칩)·src/lib/search.ts·src/lib/museum.ts(short) 가 필드를 읽는다. repo 는 썸네일 파일 이름과 id lab:<repo> 에도 쓰인다
 export type LabItem = {
   repo: string;
   title: string;
@@ -21,6 +26,8 @@ export type LabItem = {
 
 const pages = (repo: string, path = '') => `https://jamm0316.github.io/${repo}/${path}`;
 
+// @MX:ANCHOR: 연구실 목록 원본. 배열 순서가 첫 화면 카드 순서다
+// @MX:REASON: src/app/page.tsx, src/lib/search.ts, src/lib/museum.ts 가 import 한다
 export const LAB: LabItem[] = [
   {
     repo: 'travel_plan_gapyeong',

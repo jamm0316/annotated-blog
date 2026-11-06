@@ -1,3 +1,6 @@
+// @MX:NOTE: 연구실 썸네일 카드 그리드(서버 컴포넌트). 카드 전체가 배포 주소(없으면 저장소)로 가는 링크
+// @MX:SPEC: .claude/docs/domains/lab.md
+
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import type { LabItem } from '@/lib/lab';
@@ -29,6 +32,8 @@ export function LabGrid({ items }: { items: LabItem[] }) {
                   <span className="accent">[{item.kind}]</span> {formatMonth(item.date)}
                 </p>
                 <h3 className="lab-card__title">
+                  {/* @MX:WARN: .lab-card__link 는 PostBrowser 의 j/k 선택자(#posts .lab-card__link)가 찾는다 */}
+                  {/* @MX:REASON: 클래스 이름을 바꾸면 연구실 탭에서 키보드 이동이 조용히 끊긴다 */}
                   <a href={item.url ?? repo} target="_blank" rel="noopener noreferrer" className="lab-card__link">
                     {item.title}
                   </a>

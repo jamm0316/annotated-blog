@@ -16,7 +16,7 @@
 | `src/app/museum/@reader/page.tsx`, `default.tsx` | 읽기 창이 없을 때 `null` |
 | `src/app/museum/@reader/(..)posts/[slug]/page.tsx` | `/posts/<slug>` 가로채기. `Reader` 안에 `PostArticle` |
 
-스타일은 `src/app/globals.css` 의 `.museum*`(`.museum-page`, `.museum__talk` 등)·`.reader`·`.scroll*` 클래스와 `.museum-page` 에 정의한 `--m-*` 토큰(shell 도메인 파일)에 있다.
+스타일은 `src/app/globals.css` 의 `.museum*`(`.museum-page`, `.museum__talk` 등)·`.reader`·`.scroll*` 클래스와 `.museum-page` 에 정의한 `--m-*` 토큰(shell 도메인 파일)에 있다. 같은 구역 뒤쪽의 `.mode__icon`·`.mode__theme` 와 460px 규칙은 모드 메뉴(shell 도메인)의 것이다.
 
 ## 1. 컨텍스트 내부
 

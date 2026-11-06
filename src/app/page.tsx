@@ -1,3 +1,6 @@
+// @MX:NOTE: 첫 화면. 글 목록을 클라이언트에 필요한 필드만 남겨 PostBrowser 에 넘긴다
+// @MX:SPEC: .claude/docs/domains/browse.md
+
 import { PostBrowser } from '@/components/PostBrowser';
 import { LAB } from '@/lib/lab';
 import { getPosts } from '@/lib/posts';
