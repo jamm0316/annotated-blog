@@ -1884,6 +1884,12 @@ button:active:not(:disabled) {
   line-height: 1.6;
   color: var(--ink-70);
 }
+.search__answer {
+  padding: 12px 10px 14px;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
 .search__empty {
   padding: 16px 10px;
   font-size: 13px;

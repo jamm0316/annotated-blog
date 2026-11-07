@@ -27,9 +27,13 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ q }),
           });
-          const data = (await res.json().catch(() => ({}))) as { picks?: { id: string; reason: string }[]; error?: string };
+          const data = (await res.json().catch(() => ({}))) as {
+            answer?: string;
+            picks?: { id: string; reason: string }[];
+            error?: string;
+          };
           if (!res.ok || !data.picks) throw new Error(data.error ?? '지금은 답할 수 없어요.');
-          return data.picks.map(({ id, reason }) => ({ id, reason }));
+          return { answer: data.answer ?? '', picks: data.picks.map(({ id, reason }) => ({ id, reason })) };
         },
         open: (ex) => {
           if (ex.external) window.open(ex.href, '_blank', 'noopener,noreferrer');

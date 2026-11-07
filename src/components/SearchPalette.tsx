@@ -1,5 +1,5 @@
 'use client';
-// @MX:NOTE: '/'·⌘K 로 여는 검색 팔레트. 키워드는 클라이언트에서 grep, '자연어로 묻기' 줄만 /api/ask 를 부른다
+// @MX:NOTE: '/'·⌘K 로 여는 검색 팔레트. 키워드는 클라이언트에서 grep, '자연어로 묻기' 줄만 /api/ask 를 불러 AI 답과 고른 글을 보여 준다
 // @MX:SPEC: .claude/docs/domains/search.md
 
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ const SUGGESTIONS = [
   '캐시를 더 자세히 다룬 글이 있어?',
   '다운로드 API 메모리 문제를 푼 글',
   'AI 코딩 에이전트를 어떻게 통제해?',
+  '이 사람은 어떤 개발자야?',
 ];
 const TYPE_MS = 70;
 const ERASE_MS = 30;
@@ -43,8 +44,8 @@ function grep(posts: SearchPost[], query: string) {
 }
 
 type Pick = Omit<SearchItem, 'text'> & { reason: string };
-// grep: 키워드로 거른다. ask: 문장을 AI 에 물어 고른 글을 보여 준다(/api/ask).
-type Ask = { status: 'loading' } | { status: 'done'; picks: Pick[] } | { status: 'error'; message: string };
+// grep: 키워드로 거른다. ask: 문장을 AI 에 물어 답(answer)과 고른 글을 보여 준다(/api/ask).
+type Ask = { status: 'loading' } | { status: 'done'; answer: string; picks: Pick[] } | { status: 'error'; message: string };
 
 // 입력 중인 칸에서 누른 '/' 는 글자로 둔다
 const isTyping = (el: EventTarget | null) =>
@@ -124,8 +125,12 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ q }),
       });
-      const data = (await res.json()) as { picks?: Pick[]; error?: string };
-      setAsk(res.ok && data.picks ? { status: 'done', picks: data.picks } : { status: 'error', message: data.error ?? '지금은 답할 수 없습니다.' });
+      const data = (await res.json()) as { answer?: string; picks?: Pick[]; error?: string };
+      setAsk(
+        res.ok && data.picks
+          ? { status: 'done', answer: data.answer ?? '', picks: data.picks }
+          : { status: 'error', message: data.error ?? '지금은 답할 수 없습니다.' },
+      );
     } catch {
       setAsk({ status: 'error', message: '연결이 끊겼습니다. 다시 물어 주세요.' });
     }
@@ -313,9 +318,14 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
                 <kbd className="key">↵</kbd>
               </li>
             )}
-            {ask?.status === 'loading' && <li className="search__empty mono">글 목록을 읽고 고르는 중…</li>}
+            {ask?.status === 'loading' && <li className="search__empty mono">글 목록을 읽고 생각하는 중…</li>}
             {ask?.status === 'error' && <li className="search__empty mono">{ask.message}</li>}
-            {ask?.status === 'done' && ask.picks.length === 0 && (
+            {ask?.status === 'done' && ask.answer && (
+              <li className="search__answer" role="presentation">
+                {ask.answer}
+              </li>
+            )}
+            {ask?.status === 'done' && !ask.answer && ask.picks.length === 0 && (
               <li className="search__empty mono">이 질문에 맞는 글을 찾지 못했습니다.</li>
             )}
             {ask?.status === 'done' &&
@@ -345,7 +355,7 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
             <span>
               {asking
                 ? ask.status === 'done'
-                  ? `AI 가 고른 글 ${ask.picks.length}편 · 고른 까닭은 AI 가 쓴 것`
+                  ? `AI 답 · 고른 글 ${ask.picks.length}편 · 답과 까닭은 AI 가 쓴 것`
                   : 'AI 에게 묻는 중'
                 : canAsk
                   ? `${results.length}편`

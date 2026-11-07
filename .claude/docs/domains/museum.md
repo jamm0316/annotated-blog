@@ -66,7 +66,8 @@
 - 말풍선(`say`)은 한 줄씩 32ms 간격으로 타이핑한다(움직임 줄이기면 바로). 클릭·Enter·Space 로 넘기고, 마지막 줄 뒤에 `then` 이 있으면 곧바로 선택지를 띄운다.
 - 처음 인사(`talkOwl`, `greeted` 전)는 **세 줄 안에서** 끝난다: (1) 시간대 인사 + 기록관 안내(도장이 있으면 `도장이 n개 모였어요`), (2) 팁 한 줄(아직 안 읽은 NEW 글 안내, 도장이 0개면 수첩·버그 안내. 둘 다 없으면 줄 생략), (3) `/` 로 부를 수 있다는 안내. 두 번째부터는 `또 오셨네요! 무엇을 찾으세요?` 한 줄.
 - 대사가 끝나면 `owlMenu`: **질문하기**(입력창, `maxLength` 200 → `options.ask`) / **그만 대화하기**(`close`).
-- 답: 찾은 진열대 바닥에 파란 고리(`C.mark`, 주황의 보색)를 켜고 진열대별 선택지(`short` + 이유) + '괜찮아요'. 고르면 그 진열대 앞으로 걸어가 설명판을 연다. 못 찾으면 다시 묻게 하고, `ask` 가 던진 Error 의 문구를 그대로 말한다.
+- 입력 안내는 '글 찾기든 Evan 이야기든 물어보세요.', 예시는 '이 사람은 어떤 개발자야?'. 글 찾기뿐 아니라 블로그·Evan 에 관한 물음과 인사에도 답한다(범위는 search spec 의 `/api/ask` 규칙).
+- 답: 먼저 부엉이가 `answer` 를 말한다. `bubbles` 가 문장 단위로 한 칸 90자 안팎에 맞춰 나눈다. 고른 진열대가 있으면 이어서 바닥에 파란 고리(`C.mark`, 주황의 보색)를 켜고 '바닥에 파란 동그라미로 N곳을 그려 뒀어요' 뒤에 진열대별 선택지(`short` + 이유) + '괜찮아요'. 고르면 그 진열대 앞으로 걸어가 설명판을 연다. 고른 진열대가 없으면 답만 하고 `owlMenu` 로 돌아간다(답도 비면 '맞는 진열대를 못 찾았어요…'). `ask` 가 던진 Error 의 문구는 그대로 말한다.
 - 설명판(`placard`): `[topic] title`, 연재 `n/m편`, 수첩 상태. 선택지 '글 읽기'(연구실은 '새 탭에서 보기'), '돔 열어 보기'(E), '다음 편', 도장 1 이고 퀴즈가 있으면 '퀴즈 풀기', '닫기'.
 - **대화창 닫기**: 대사를 끝까지 넘기지 않아도 오른쪽 위 `닫기 ✕` 버튼(`.museum__skip`) 또는 Esc 로 `close()` 한다. `close` 는 큐·선택지를 비우고 캔버스로 포커스를 돌린다.
 
@@ -117,9 +118,9 @@
 - `src/lib/museum.ts`: `type PropKind`, `type Exhibit`, `getExhibits(): Exhibit[]`(글 다음 연구실 순).
 - `Museum.tsx`: `Museum({ exhibits }: { exhibits: Exhibit[] })`.
 - `Reader.tsx`: `Reader({ id, title, href, children })`.
-- `engine.ts`: `mountMuseum(root: HTMLElement, options: MuseumOptions): () => void`, `type AskPick = { id; reason }`, `type MuseumOptions`:
+- `engine.ts`: `mountMuseum(root: HTMLElement, options: MuseumOptions): () => void`, `type AskPick = { id; reason }`, `type AskReply = { answer; picks: AskPick[] }`, `type MuseumOptions`:
   - `exhibits: Exhibit[]`
-  - `ask(question: string): Promise<AskPick[]>` — 실패하면 사용자에게 보일 문구를 담은 `Error` 를 던진다.
+  - `ask(question: string): Promise<AskReply>` — 실패하면 사용자에게 보일 문구를 담은 `Error` 를 던진다.
   - `open(exhibit: Exhibit): void` — 글은 사이트 안(`?from=museum`), 연구실은 새 탭.
   - 반환 함수: 타이머·이벤트·ResizeObserver·three.js 자원을 정리하고 `root` 를 비운다.
 - `passport.ts`: `type Passport`, `loadPassport()`, `savePassport(p)`, `stamp(id): boolean`(처음 찍으면 `true`), `STAMP_EVENT`, `READ_EVENT`.
@@ -138,7 +139,7 @@
 
 ### HTTP
 
-- `ask` 는 `POST /api/ask`, body `{ q }`. 응답 `{ picks: { id, reason }[] }` 또는 `{ error }`. `!res.ok` 이거나 `picks` 가 없으면 `error`(없으면 `'지금은 답할 수 없어요.'`)로 Error 를 던진다. 받은 id 중 진열대에 없는 것은 버린다.
+- `ask` 는 `POST /api/ask`, body `{ q }`. 응답 `{ answer, picks: { id, reason }[] }` 또는 `{ error }`. `answer` 가 없으면 빈 문자열로 넘긴다. `!res.ok` 이거나 `picks` 가 없으면 `error`(없으면 `'지금은 답할 수 없어요.'`)로 Error 를 던진다. 받은 id 중 진열대에 없는 것은 버린다.
 
 ### 에러 계약
 
@@ -156,4 +157,4 @@
 | playgrounds | 간접 | 두루마리 안 본문은 `PostArticle` 이 그리는 MDX 컴포넌트다. 그림 확대 `dialog` 가 열리면 engine 은 입력을 멈춘다 |
 | browse | 간접 | 첫 화면 목록의 `/posts/<slug>` prefetch 캐시가 `?from=museum` 을 둔 이유다 |
 
-최종 갱신: 2026-11-06
+최종 갱신: 2026-11-07

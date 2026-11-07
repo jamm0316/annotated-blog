@@ -45,7 +45,8 @@ export function getSearchItems(): SearchItem[] {
   return [...posts, ...lab].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// 자연어 검색에서 모델에 넘기는 목록. 화면에 쓰지 않는 칸(분류·역량·태그·요약)까지 적는다
+// 자연어 질문에서 모델에 넘기는 목록. 화면에 쓰지 않는 칸(분류·역량·태그·요약·발췌)까지 적는다.
+// 발췌(본문 앞부분)는 '이 사람은 어떤 사람 같아?' 같은 물음에 요약보다 조금 더 근거를 주려고 넣는다
 export function getSearchCatalog(): string {
   const posts = getPosts().map((p) =>
     [
@@ -56,6 +57,7 @@ export function getSearchCatalog(): string {
       p.areas.length > 0 && `역량: ${p.areas.join(', ')}`,
       p.tags.length > 0 && `태그: ${p.tags.join(', ')}`,
       `요약: ${p.summary || p.description || p.excerpt}`,
+      (p.summary || p.description) && p.excerpt && `발췌: ${p.excerpt}`,
     ]
       .filter(Boolean)
       .join('\n'),

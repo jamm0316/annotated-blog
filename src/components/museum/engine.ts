@@ -8,12 +8,14 @@ import { loadPassport, READ_EVENT, savePassport, stamp, STAMP_EVENT } from './pa
 // 이 모드만 사이트의 세 가지 색 규칙에서 빠진다(나무·풀·크림 같은 색이 있어야 장난감처럼 보인다).
 
 export type AskPick = { id: string; reason: string };
+/** 부엉이의 답(answer)과 함께 고른 진열대. answer 가 비면 진열대 안내만 한다 */
+export type AskReply = { answer: string; picks: AskPick[] };
 // @MX:ANCHOR: mountMuseum 의 옵션 계약(exhibits, ask, open)
 // @MX:REASON: Museum.tsx 가 /api/ask 응답과 라우터 이동을 이 모양에 맞춰 넘긴다. ask 는 실패 시 문구 담은 Error 를 던져야 부엉이가 그대로 말한다
 export type MuseumOptions = {
   exhibits: Exhibit[];
   /** 부엉이에게 물은 질문을 /api/ask 로 넘긴다. 실패하면 문구가 담긴 Error 를 던진다 */
-  ask: (question: string) => Promise<AskPick[]>;
+  ask: (question: string) => Promise<AskReply>;
   /** 글은 사이트 안에서, 연구실은 새 탭에서 연다 */
   open: (exhibit: Exhibit) => void;
 };
@@ -1140,14 +1142,14 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   function question() {
     choices.replaceChildren();
     stopTyping();
-    talkText.textContent = '궁금한 걸 적어 주세요. 맞는 진열대를 찾아 드릴게요.';
+    talkText.textContent = '글 찾기든 Evan 이야기든 물어보세요. 맞는 진열대도 찾아 드릴게요.';
     more.hidden = true;
     const form = document.createElement('form');
     form.className = 'museum__ask';
     const input = document.createElement('input');
     input.type = 'text';
     input.maxLength = 200;
-    input.placeholder = '예: 캐시를 더 자세히 다룬 글이 있어?';
+    input.placeholder = '예: 이 사람은 어떤 개발자야?';
     input.setAttribute('aria-label', '부엉이에게 물을 질문');
     const send = document.createElement('button');
     send.type = 'submit';
@@ -1165,26 +1167,27 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   async function answer(q: string) {
     choices.replaceChildren();
     talkText.textContent = '음… 진열대를 둘러보는 중이에요.';
-    let picks: AskPick[];
+    let reply: AskReply;
     try {
-      picks = await options.ask(q);
+      reply = await options.ask(q);
     } catch (error) {
       if (disposed) return;
       say('부엉이', [error instanceof Error ? error.message : '지금은 답할 수 없어요.'], owlMenu);
       return;
     }
     if (disposed) return;
-    const found = picks
+    const found = reply.picks
       .map((p) => ({ pick: p, spot: spots.find((s) => s.exhibit.id === p.id) }))
       .filter((f): f is { pick: AskPick; spot: Spot } => !!f.spot);
+    const said = bubbles(reply.answer);
     if (!found.length) {
       glow(() => false);
-      say('부엉이', ['맞는 진열대를 못 찾았어요. 다르게 물어봐 주실래요?'], owlMenu);
+      say('부엉이', said.length ? said : ['맞는 진열대를 못 찾았어요. 다르게 물어봐 주실래요?'], owlMenu);
       return;
     }
     const ids = new Set(found.map((f) => f.spot.exhibit.id));
     glow((s) => ids.has(s.exhibit.id));
-    say('부엉이', [`${found.length}개를 찾았어요. 바닥에 파란 동그라미를 그려 뒀어요. 어디로 안내할까요?`], () =>
+    say('부엉이', [...said, `바닥에 파란 동그라미로 ${found.length}곳을 그려 뒀어요. 어디로 안내할까요?`], () =>
       ask([
         ...found.map(({ pick, spot }) => ({
           label: spot.exhibit.short,
@@ -1197,6 +1200,18 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
         { label: '괜찮아요', run: close },
       ]),
     );
+  }
+  // 긴 답을 말풍선 한 칸에 맞게 문장 단위로 나눈다. 한 칸은 BUBBLE 자 안팎
+  function bubbles(text: string): string[] {
+    const BUBBLE = 90;
+    const sentences = text.trim().match(/[^.!?。]+[.!?。]*\s*/g) ?? [];
+    const lines: string[] = [];
+    for (const sentence of sentences.map((t) => t.trim()).filter(Boolean)) {
+      const last = lines.length - 1;
+      if (last >= 0 && lines[last].length + sentence.length + 1 <= BUBBLE) lines[last] += ` ${sentence}`;
+      else lines.push(sentence);
+    }
+    return lines;
   }
 
   function approach(spot: Spot, reason?: string) {
