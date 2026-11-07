@@ -10,7 +10,23 @@ import { loadPassport, READ_EVENT, savePassport, stamp, STAMP_EVENT } from './pa
 export type AskPick = { id: string; reason: string };
 /** 부엉이의 답(answer)과 함께 고른 진열대. answer 가 비면 진열대 안내만 한다 */
 export type AskReply = { answer: string; picks: AskPick[] };
-// @MX:ANCHOR: mountMuseum 의 옵션 계약(exhibits, ask, open)
+/** 관람객 한 명의 자리. x·z 는 바닥 좌표, ry 는 바라보는 방향(라디안) */
+export type SocialPose = { x: number; z: number; ry: number; moving: boolean };
+/** 실시간 관람객 연결(presence.ts). 엔진은 내 자리를 넘기고, 받은 다른 관람객을 반투명 캐릭터로 그린다 */
+export type Social = {
+  /** 장면이 붙으면 한 번 부른다. 정리 함수를 돌려준다 */
+  start(api: {
+    /** 다른 관람객을 그리거나 옮긴다. initial 이면(Presence 로 처음 알게 된 자리) 이미 그리는 중인 사람은 건드리지 않는다 */
+    upsert(id: string, pose: SocialPose, initial: boolean): void;
+    /** 이 목록에 없는 관람객은 지운다 */
+    prune(alive: Set<string>): void;
+    /** 지금 박물관에 있는 사람 수(나 포함). 0 이면 연결이 끊긴 것 */
+    setCount(n: number): void;
+  }): () => void;
+  /** 매 프레임 내 자리. 보낼지와 얼마나 자주 보낼지는 Social 쪽이 정한다 */
+  move(pose: SocialPose): void;
+};
+// @MX:ANCHOR: mountMuseum 의 옵션 계약(exhibits, ask, open, social)
 // @MX:REASON: Museum.tsx 가 /api/ask 응답과 라우터 이동을 이 모양에 맞춰 넘긴다. ask 는 실패 시 문구 담은 Error 를 던져야 부엉이가 그대로 말한다
 export type MuseumOptions = {
   exhibits: Exhibit[];
@@ -18,6 +34,8 @@ export type MuseumOptions = {
   ask: (question: string) => Promise<AskReply>;
   /** 글은 사이트 안에서, 연구실은 새 탭에서 연다 */
   open: (exhibit: Exhibit) => void;
+  /** 실시간 관람객. 없으면(환경변수 없음) 혼자 관람한다 */
+  social?: Social;
 };
 
 // @MX:NOTE: 관 이름. 수첩 제목·축하·명예의 전당·관 이름 표시(announce)가 함께 쓴다
@@ -824,6 +842,78 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   player.rotation.y = Math.PI;
   scene.add(player);
 
+  // 다른 관람객: 같은 캐릭터를 반투명하게, 후드 색을 사람마다 바꿔 내 캐릭터(주황)와 헷갈리지 않게 그린다.
+  // 받은 자리 사이를 걸어서 이어 그리고, 걷는 동안만 팔다리가 흔들린다(반복 애니메이션 금지는 그대로)
+  const GHOST_MAX = 12;
+  const GHOST_HOODS = [C.navy, C.leaf, C.mark, C.pot, C.owl, C.wood];
+  const ghostMats = new Map<string, THREE.MeshToonMaterial>();
+  const ghostMat = (base: THREE.MeshToonMaterial, color: number) => {
+    const keyName = `${base.color.getHex()}>${color}`;
+    let m = ghostMats.get(keyName);
+    if (!m) {
+      m = base.clone();
+      m.color.setHex(color);
+      m.transparent = true;
+      m.opacity = 0.55;
+      m.depthWrite = false;
+      ghostMats.set(keyName, m);
+      k.disposables.push(m);
+    }
+    return m;
+  };
+  type Ghost = { g: THREE.Group; legs: THREE.Object3D[]; arms: THREE.Object3D[]; to: SocialPose; walk: number };
+  const ghosts = new Map<string, Ghost>();
+  function addGhost(id: string, pose: SocialPose): Ghost | null {
+    if (ghosts.size >= GHOST_MAX) return null;
+    const made = makePlayer(k);
+    let h = 0;
+    for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const hood = GHOST_HOODS[h % GHOST_HOODS.length];
+    made.player.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const base = o.material as THREE.MeshToonMaterial;
+      o.material = ghostMat(base, base.color.getHex() === C.orange ? hood : base.color.getHex());
+      o.castShadow = false;
+    });
+    made.player.position.set(pose.x, 0, pose.z);
+    made.player.rotation.y = pose.ry;
+    scene.add(made.player);
+    const ghost = { g: made.player, legs: made.legs, arms: made.arms, to: pose, walk: 0 };
+    ghosts.set(id, ghost);
+    return ghost;
+  }
+  function dropGhost(id: string) {
+    const gh = ghosts.get(id);
+    if (!gh) return;
+    scene.remove(gh.g);
+    ghosts.delete(id);
+  }
+  function updateGhosts(dt: number) {
+    ghosts.forEach((gh) => {
+      const dx = gh.to.x - gh.g.position.x;
+      const dz = gh.to.z - gh.g.position.z;
+      const d = Math.hypot(dx, dz);
+      // 너무 멀면(순간이동·늦게 받은 자리) 바로 옮기고, 가까우면 걷는 속도로 따라간다
+      const going = d > 0.03;
+      if (d > 4 || reduce) gh.g.position.set(gh.to.x, 0, gh.to.z);
+      else if (going) {
+        const sp = Math.min(d, 3.8 * dt);
+        gh.g.position.x += (dx / d) * sp;
+        gh.g.position.z += (dz / d) * sp;
+      }
+      const want = going && d > 0.15 ? Math.atan2(dx, dz) : gh.to.ry;
+      let diff = want - gh.g.rotation.y;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      gh.g.rotation.y += reduce ? diff : diff * Math.min(1, dt * 10);
+      if (going) gh.walk += dt * 11;
+      const swing = going && !reduce ? Math.sin(gh.walk) : 0;
+      gh.legs[0].rotation.x = swing * 0.7;
+      gh.legs[1].rotation.x = -swing * 0.7;
+      gh.arms[0].rotation.x = -swing * 0.6;
+      gh.arms[1].rotation.x = swing * 0.6;
+    });
+  }
+
   // ── 겹친 UI ──────────────────────────────────────────────────────
   const el = (tag: string, cls: string, parent: HTMLElement = root) => {
     const e = document.createElement(tag);
@@ -869,6 +959,14 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   // 관람 수첩 버튼, 수첩, 알림 한 줄, 퇴장 영수증
   const hud = el('button', 'museum__hud mono') as HTMLButtonElement;
   hud.type = 'button';
+  // 지금 함께 관람 중인 사람 수(실시간 연결이 될 때만 보인다)
+  const live = el('p', 'museum__live mono');
+  live.hidden = true;
+  live.setAttribute('aria-live', 'polite');
+  const setLive = (n: number) => {
+    live.hidden = n < 1;
+    live.textContent = n <= 1 ? '지금은 혼자 관람 중' : `지금 ${n}명 관람 중`;
+  };
   const book = el('div', 'museum__passport');
   book.hidden = true;
   book.setAttribute('role', 'dialog');
@@ -1891,6 +1989,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     arms[1].rotation.x = swing * 0.6;
     const bob = moved && !reduce ? Math.abs(Math.sin(walk)) * 0.06 : 0;
     body.position.y += (bob - body.position.y) * 0.4;
+    options.social?.move({ x: player.position.x, z: player.position.z, ry: player.rotation.y, moving: moved });
+    updateGhosts(dt);
     // 부엉이는 가까이 온 사람 쪽으로 고개를 돌린다
     const toP = Math.atan2(player.position.x - owl.position.x, player.position.z - owl.position.z);
     const lookAt = player.position.distanceTo(owl.position) < 6 ? THREE.MathUtils.clamp(toP, -0.9, 0.9) : 0;
@@ -1972,8 +2072,26 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
   );
   raf = requestAnimationFrame(frame);
 
+  const stopSocial =
+    options.social?.start({
+      upsert(id, pose, initial) {
+        const gh = ghosts.get(id);
+        // 이미 그리는 사람은 Broadcast 로 받은 자리만 따른다(Presence 의 자리는 멈출 때만 갱신돼 늦을 수 있다)
+        if (gh) {
+          if (!initial) gh.to = pose;
+          return;
+        }
+        addGhost(id, pose);
+      },
+      prune(alive) {
+        [...ghosts.keys()].forEach((id) => !alive.has(id) && dropGhost(id));
+      },
+      setCount: setLive,
+    }) ?? null;
+
   return () => {
     disposed = true;
+    stopSocial?.();
     cancelAnimationFrame(raf);
     timers.forEach((t) => window.clearTimeout(t));
     window.clearTimeout(toastTimer);

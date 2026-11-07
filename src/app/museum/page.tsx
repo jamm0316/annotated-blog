@@ -13,12 +13,22 @@ export const metadata: Metadata = {
   description: '글 한 편이 진열대 하나인 3D 기록관. 걸어 다니며 보고, 부엉이에게 물어 찾는다.',
 };
 
+// 실시간 관람객(Supabase Realtime). Vercel 의 Supabase 연동이 넣는 값 중 브라우저에 보여도 되는 둘만 넘긴다.
+// 이름이 연동마다 조금 달라 대체 이름도 본다. 없으면 null 이라 혼자 관람한다
+// @MX:WARN: 여기서 넘기는 값은 HTML 에 그대로 실린다. 서버 전용 키(service role·secret·POSTGRES_URL)를 넣지 않는다
+// @MX:REASON: 서버 키가 실리면 누구나 DB 를 마음대로 읽고 쓸 수 있다
+function realtimeConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  return url && key ? { url, key } : null;
+}
+
 export default async function MuseumPage() {
   const exhibits = withStats(getExhibits(), await getPostStats());
   return (
     <main className="museum-page">
       <h1 className="sr-only">evan.log 기록관</h1>
-      <Museum exhibits={exhibits} />
+      <Museum exhibits={exhibits} realtime={realtimeConfig()} />
       <p className="museum-page__keys mono">
         <span>
           <kbd className="key">←↑↓→</kbd> <kbd className="key">WASD</kbd> 걷기

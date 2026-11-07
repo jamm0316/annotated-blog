@@ -1,5 +1,5 @@
 'use client';
-// @MX:NOTE: 박물관 클라이언트 진입점. engine 을 동적 import 해 붙이고 ask(/api/ask)·open(이동)을 넘긴다
+// @MX:NOTE: 박물관 클라이언트 진입점. engine 을 동적 import 해 붙이고 ask(/api/ask)·open(이동)·social(실시간 관람객, presence.ts)을 넘긴다
 // @MX:SPEC: .claude/docs/domains/museum.md
 
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,10 @@ import type { Exhibit } from '@/lib/museum';
 
 // 박물관 모드. 장면은 engine.ts 가 그리고, 여기서는 붙였다 뗄 자리와 AI 검색·이동만 넘긴다.
 // three.js 는 이 페이지에서만 불러온다.
-export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
+/** 실시간 관람객 연결. 공개돼도 되는 값(프로젝트 주소·공개 키)만 받는다. 없으면 혼자 관람한다 */
+export type RealtimeConfig = { url: string; key: string } | null;
+
+export function Museum({ exhibits, realtime }: { exhibits: Exhibit[]; realtime: RealtimeConfig }) {
   const root = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -17,10 +20,11 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
     if (!el) return;
     let unmount: (() => void) | null = null;
     let cancelled = false;
-    import('./engine').then(({ mountMuseum }) => {
+    Promise.all([import('./engine'), realtime ? import('./presence') : null]).then(([{ mountMuseum }, presence]) => {
       if (cancelled) return;
       unmount = mountMuseum(el, {
         exhibits,
+        social: presence && realtime ? presence.createSocial(realtime) : undefined,
         ask: async (q) => {
           const res = await fetch('/api/ask', {
             method: 'POST',
@@ -51,7 +55,7 @@ export function Museum({ exhibits }: { exhibits: Exhibit[] }) {
       cancelled = true;
       unmount?.();
     };
-  }, [exhibits, router]);
+  }, [exhibits, realtime, router]);
 
   // 박물관을 떠나는 링크(머리말·모드 메뉴·영수증의 '블로그로 나가기')를 누르면 두루마리처럼 말려 올라간 뒤 이동한다.
   // 들어올 때 펼쳐지는 움직임은 CSS(.museum 의 museum-unroll)가 맡는다

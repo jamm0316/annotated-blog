@@ -7,12 +7,13 @@
 | 파일 | 역할 |
 | --- | --- |
 | `src/lib/museum.ts` | 글·연구실에서 진열품(`Exhibit`)을 만든다. `PROP_BY_TOPIC` |
-| `src/components/museum/Museum.tsx` | 클라이언트 진입점. engine 을 동적 import 해 붙이고, `ask`·`open` 을 넘긴다. 떠날 때 말려 올라가기 |
+| `src/components/museum/Museum.tsx` | 클라이언트 진입점. engine 을 동적 import 해 붙이고, `ask`·`open`·`social`(realtime 설정이 있으면 `presence.ts` 도 동적 import)을 넘긴다. 떠날 때 말려 올라가기 |
+| `src/components/museum/presence.ts` | 실시간 관람객(`createSocial`). Supabase Realtime 채널 `museum-lobby` 의 Presence·Broadcast |
 | `src/components/museum/engine.ts` | 장면·배치·대화·입력·수첩·영수증·프레임 루프 전부(`mountMuseum`) |
 | `src/components/museum/Reader.tsx` | 두루마리(`<dialog>`). 끝까지 내리면 도장 |
 | `src/components/museum/passport.ts` | 관람 수첩 localStorage 저장소와 CustomEvent 이름 |
 | `src/app/museum/layout.tsx` | `children` 위에 `@reader` 슬롯을 겹친다 |
-| `src/app/museum/page.tsx` | `/museum` 페이지. 메타데이터, `withStats(getExhibits(), await getPostStats())` 를 `<Museum exhibits>` 에 넘김, 키 안내 줄. `revalidate = 3600`(조회수 표식을 한 시간마다 다시 얹는다) |
+| `src/app/museum/page.tsx` | `/museum` 페이지. 메타데이터, `withStats(getExhibits(), await getPostStats())` 를 `<Museum exhibits>` 에, 공개 Supabase 주소·키(`realtimeConfig()`)를 `realtime` 에 넘김, 키 안내 줄. `revalidate = 3600`(조회수 표식을 한 시간마다 다시 얹는다) |
 | `src/app/museum/@reader/page.tsx`, `default.tsx` | 읽기 창이 없을 때 `null` |
 | `src/app/museum/@reader/(..)posts/[slug]/page.tsx` | `/posts/<slug>` 가로채기. `Reader` 안에 `PostArticle` |
 
@@ -110,6 +111,15 @@
 - **두루마리는 history 한 칸**: 닫기·Esc·바깥 누르기·뒤로 가기 모두 `router.back()`. 박물관 장면은 언마운트되지 않아 서 있던 자리가 남는다. 새로고침·공유한 주소는 원래 글 페이지를 연다. '전체 페이지'는 일반 `<a>` 라 가로채지 않는다.
 - **떠날 때 말려 올라가기**: 박물관 밖 같은 출처 링크 클릭을 캡처 단계에서 막고 `data-leaving` 을 단 뒤 620ms 뒤 `router.push`. `dialog` 안 링크, 새 탭, `/museum*`, 수정 키 클릭, 움직임 줄이기는 그대로 둔다. 들어올 때 펼쳐지는 것은 CSS(`museum-unroll`).
 
+### 실시간 관람객(`presence.ts`, engine 의 `social`)
+
+- **연결**: `@supabase/supabase-js` 를 박물관에서만 동적 import 해 채널 `museum-lobby` 에 들어간다(`presence.key` = 탭마다 새로 뽑는 `crypto.randomUUID()` 앞 12자, `broadcast.self: false`). 설정은 서버(`app/museum/page.tsx`)가 `NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL` 과 `NEXT_PUBLIC_SUPABASE_ANON_KEY || NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 로 만들고, 둘 중 하나라도 없으면 null 이라 혼자 관람한다. **이 값은 HTML 에 실리므로 서버 전용 키를 넣지 않는다.**
+- **보내는 것**: 임의 번호와 자리 `{ x, z, ry }`(소수 둘째 자리)뿐. 이름·IP·관람 수첩은 보내지 않는다(수첩은 계속 localStorage 에만).
+- **걷는 동안**: Broadcast `pos` `{ id, x, z, ry, m: true }` 를 `SEND_MS = 400`ms 마다 많아야 한 번. **멈춘 순간**: `m: false` 로 한 번 보내고 Presence `track` 으로 그 자리를 남긴다(`TRACK_MS = 1500`ms 간격 이상). 멈춰 있으면 아무것도 보내지 않는다. 무료 한도(초당 100건·월 200만 건)를 아끼려는 것이다.
+- **받기**: Presence `sync` 마다 사람 수(나 포함)를 `setCount`, 처음 보는 사람은 그 자리에 그리고(`upsert(…, initial=true)`, 이미 그리는 사람은 건드리지 않는다), 목록에서 빠진 사람은 지운다(`prune`). Broadcast 로 받은 자리는 그대로 따른다.
+- **그리기(engine)**: `makePlayer` 캐릭터를 반투명(불투명도 0.55, 그림자 없음)으로, 후드 색을 id 해시로 `GHOST_HOODS`(남색·풀·파랑·흙·회청·나무) 중 하나로 바꿔 내 캐릭터(주황)와 구별한다. 많아야 `GHOST_MAX = 12` 명. 받은 자리까지 걷는 속도로 따라가고 4칸 넘게 떨어지면 바로 옮긴다. 걷는 동안만 팔다리가 흔들린다. 벽 충돌은 하지 않는다.
+- **표시**: 수첩 버튼 아래 `.museum__live` '지금 N명 관람 중'(혼자면 '지금은 혼자 관람 중'). 연결되기 전·끊기면 숨는다.
+
 ## 2. 외부 노출 (Published Language)
 
 ### 라우트
@@ -158,6 +168,7 @@
 | --- | --- | --- |
 | posts | museum → posts | `getPosts()`·`type Quiz`(museum.ts), `getPost`·`getPosts`(가로채기 라우트), `PostArticle` 컴포넌트를 글 페이지와 함께 쓴다. `short`·`quiz`·`series`·`topic` frontmatter 에 기댄다 |
 | lab | museum → lab | `LAB` 에서 연구실 진열품을 만든다(`repo`, `short`, `title`, `date`, `url`) |
+| stats | museum → stats | 진열품 `rank`·`views`(page.tsx 의 `withStats`). 같은 Supabase 프로젝트의 Realtime 을 실시간 관람객이 쓴다 |
 | search | museum → search | `/api/ask` 를 HTTP 로 부른다. 진열품 id 는 search 의 id(`slug`, `lab:<repo>`)와 같아야 picks 가 진열대에 맞는다. `SearchPalette` 는 `/museum` 에서 `/` 키를 가로채지 않는다(부엉이가 쓴다) |
 | shell | shell → museum | `ModeMenu` 가 `/museum` 링크와 첫 방문 안내(`evan-log:museum-hint`)를 둔다. `.museum*`·`.reader`·`.scroll*` 스타일과 `--m-*` 토큰은 globals.css 에 있다. 머리말 링크 클릭은 Museum.tsx 의 말려 올라가기가 가로챈다 |
 | playgrounds | 간접 | 두루마리 안 본문은 `PostArticle` 이 그리는 MDX 컴포넌트다. 그림 확대 `dialog` 가 열리면 engine 은 입력을 멈춘다 |

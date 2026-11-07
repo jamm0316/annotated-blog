@@ -2436,6 +2436,7 @@ button:active:not(:disabled) {
   --m-accent: #ff7a1a;
   --m-bubble: #fff8ec;
   --m-navy: #2b3a67;
+  --m-leaf: #6fae5a;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2720,6 +2721,31 @@ button:active:not(:disabled) {
 .museum__hud:hover,
 .museum__hud:focus-visible {
   background: #fff;
+}
+/* 함께 관람 중인 사람 수. 수첩 버튼 바로 아래 */
+.museum__live {
+  position: absolute;
+  left: 14px;
+  top: 52px;
+  z-index: 2;
+  margin: 0;
+  padding: 3px 10px 3px 22px;
+  font-size: 12px;
+  color: var(--m-ink);
+  background: var(--m-bubble);
+  border: 1.5px solid var(--m-ink);
+  border-radius: 999px;
+}
+.museum__live::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--m-leaf);
 }
 .museum__toast {
   position: absolute;

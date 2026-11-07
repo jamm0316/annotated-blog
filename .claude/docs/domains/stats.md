@@ -99,7 +99,7 @@ export function ViewBeacon({ slug }: { slug: string }): null
 
 ### 환경변수
 
-Vercel 의 Supabase 연동이 넣는다. 코드는 `POSTGRES_URL` 만 읽는다(서버 전용). 값은 코드·문서에 옮겨 적지 않는다. 박물관 실시간 접속(아직 없음)은 `SUPABASE_URL`·`NEXT_PUBLIC_SUPABASE_ANON_KEY` 를 쓸 예정이다.
+Vercel 의 Supabase 연동이 넣는다. 코드는 `POSTGRES_URL` 만 읽는다(서버 전용). 값은 코드·문서에 옮겨 적지 않는다. 박물관 실시간 관람객(museum 도메인 `presence.ts`)은 같은 프로젝트의 Realtime 을 공개 주소·공개 키(`NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)로 쓴다. DB 표와는 상관없다.
 
 ## 3. Context Map
 
