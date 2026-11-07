@@ -1,5 +1,5 @@
 'use client';
-// @MX:NOTE: '/'·⌘K 로 여는 검색 팔레트. 키워드는 클라이언트에서 grep, '자연어로 묻기' 줄만 /api/ask 를 불러 AI 답과 고른 글을 보여 준다. 첫 방문에 한 번 검색 칸 아래 안내 말풍선(TIP_KEY)
+// @MX:NOTE: '/'·⌘K 로 여는 검색 팔레트. 키워드는 클라이언트에서 grep, '자연어로 묻기' 줄만 /api/ask 를 불러 AI 답과 고른 글을 보여 준다
 // @MX:SPEC: .claude/docs/domains/search.md
 
 import { useRouter } from 'next/navigation';
@@ -10,11 +10,6 @@ type SearchPost = SearchItem;
 
 
 const LATEST = 8;
-
-// 처음 온 방문자에게 한 번만 검색 칸 아래 '질문해서 찾아보세요' 말풍선을 띄운다. 이 브라우저에서 한 번 보이면 다시 띄우지 않는다
-// @MX:WARN: 이 키는 말풍선을 실제로 띄울 때(타이머 안에서) 적는다. ModeMenu 가 첫 렌더에 이 키를 읽어 박물관 말풍선을 다음 방문으로 미룬다
-// @MX:REASON: 두 말풍선이 한 번에 뜨면 머리말이 어지럽다. effect 에서 바로 적으면 ModeMenu 가 같은 방문에 '이미 봤다'로 읽는다
-export const TIP_KEY = 'evan-log:search-tip';
 
 // 검색창을 열면 입력칸에 타이핑됐다 지워지는 예시 질문. 실제 글로 답이 나오는 것만 둔다.
 // 한 바퀴만 돌고 마지막 질문에서 멈춘다(반복 애니메이션 금지). Tab 을 누르면 지금 보이는 질문이 들어간다.
@@ -72,34 +67,6 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
   const [hint, setHint] = useState('');
   const [suggestion, setSuggestion] = useState(SUGGESTIONS[0]);
   const touched = useRef(false);
-  const [tip, setTip] = useState(false);
-
-  useEffect(() => {
-    // 박물관에서는 '/' 가 부엉이를 부르고 부엉이가 따로 안내한다
-    if (window.location.pathname.startsWith('/museum')) return;
-    let seen = true;
-    try {
-      seen = localStorage.getItem(TIP_KEY) === '1';
-    } catch {}
-    if (seen) return;
-    // 첫 화면 입장이 끝난 뒤에 띄운다
-    const t = window.setTimeout(() => {
-      try {
-        localStorage.setItem(TIP_KEY, '1');
-      } catch {}
-      setTip(true);
-    }, 900);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    if (!tip) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setTip(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [tip]);
 
   const results = useMemo(() => grep(posts, query), [posts, query]);
 
@@ -172,7 +139,6 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
   const open = () => {
     const d = dialog.current;
     if (!d || d.open) return;
-    setTip(false);
     setQuery('');
     setActive(0);
     setAsk(null);
@@ -262,32 +228,14 @@ export function SearchPalette({ posts }: { posts: SearchPost[] }) {
   return (
     <>
       {/* 입력칸처럼 보이게 해서 누르기 전에 검색이라는 걸 알게 한다. 오른쪽 '/' 는 바로 여는 키 */}
-      <div className="search-wrap">
-        <button type="button" className="search-trigger mono" aria-label="글 검색 (/)" onClick={open}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-            <circle cx="10.5" cy="10.5" r="6.5" />
-            <path d="M15.5 15.5 20 20" strokeLinecap="round" />
-          </svg>
-          <span className="search-trigger__label">검색</span>
-          <kbd className="key search-trigger__key">/</kbd>
-        </button>
-        {/* 첫 방문 안내 말풍선. 모양은 박물관 안내(ModeMenu 의 mode__hint)와 같다 */}
-        {tip && (
-          <div className="mode__hint search-tip" role="status">
-            <p className="mode__hint-title mono">TIP · 물어서 찾기</p>
-            <p className="mode__hint-text">질문해서 읽고 싶은 글을 찾아보세요. 부엉이 AI 가 맞는 글을 골라 줘요.</p>
-            <p className="search-tip__eg mono">예: {SUGGESTIONS[1]}</p>
-            <div className="mode__hint-actions mono">
-              <button type="button" className="mode__hint-go search-tip__go" onClick={open}>
-                물어보기 →
-              </button>
-              <button type="button" className="mode__hint-close" onClick={() => setTip(false)}>
-                닫기
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <button type="button" className="search-trigger mono" aria-label="글 검색 (/)" onClick={open}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="M15.5 15.5 20 20" strokeLinecap="round" />
+        </svg>
+        <span className="search-trigger__label">검색</span>
+        <kbd className="key search-trigger__key">/</kbd>
+      </button>
 
       <dialog
         ref={dialog}

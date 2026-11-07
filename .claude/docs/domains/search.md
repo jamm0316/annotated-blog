@@ -44,12 +44,6 @@
 - 사용자가 입력을 시작하면 지금 질문을 다 보여 준 채 멈춘다. `prefers-reduced-motion` 이면 움직이지 않고 첫 질문을 그대로 보여 준다.
 - 빈 칸에서 `Tab`(또는 폰에서 `Tab` 버튼)을 누르면 지금 보이는 질문이 입력되고 '자연어로 묻기' 줄이 골라진다. 이어서 `Enter` 로 묻는다.
 
-### 첫 방문 안내 말풍선 — `SearchPalette`
-
-- `/museum` 이 아닌 곳에 처음 온 방문자에게 900ms 뒤 검색 칸 아래 말풍선(`.search-tip`, 모양은 shell 의 `.mode__hint*` 를 함께 쓴다)이 한 번 뜬다. 문구: 'TIP · 물어서 찾기' / '질문해서 읽고 싶은 글을 찾아보세요. 부엉이 AI 가 맞는 글을 골라 줘요.' / '예: ' + `SUGGESTIONS[1]`.
-- `localStorage['evan-log:search-tip'] = '1'`(`TIP_KEY`)은 **타이머 안에서 실제로 띄울 때** 적는다. `ModeMenu` 가 첫 렌더에 이 키를 읽어 박물관 말풍선을 다음 방문으로 미루므로, effect 에서 바로 적으면 같은 방문에 두 말풍선이 함께 뜬다.
-- `물어보기 →` 는 검색창을 연다(열면 말풍선이 닫힌다). `닫기`·`Escape` 로 닫는다.
-
 ### 키보드
 
 - ⌘K / Ctrl+K: 어디서든 열고 닫는다.
@@ -96,7 +90,6 @@ export function getSearchItems(): SearchItem[]
 export function getSearchCatalog(): string
 
 // src/components/SearchPalette.tsx ('use client')
-export const TIP_KEY = 'evan-log:search-tip'
 export function SearchPalette({ posts }: { posts: SearchItem[] }): JSX.Element
 ```
 
@@ -136,11 +129,7 @@ export function SearchPalette({ posts }: { posts: SearchItem[] }): JSX.Element
 
 ### 저장소·이벤트
 
-| 키 | 값 | 쓰는 곳 |
-| --- | --- | --- |
-| `localStorage['evan-log:search-tip']` | `'1'` | `SearchPalette` (`TIP_KEY`, export). `ModeMenu` 가 읽는다 |
-
-CustomEvent 는 쓰지 않는다. 속도 제한 기록은 서버 인스턴스 메모리에만 있다.
+없다. localStorage·CustomEvent 를 쓰지 않는다. 속도 제한 기록은 서버 인스턴스 메모리에만 있다.
 
 ## 3. Context Map
 

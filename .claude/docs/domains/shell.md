@@ -86,7 +86,7 @@
 - **모드 메뉴(`ModeMenu`)**:
   - `MODES`: `/` 읽기(글 목록), `/museum` 박물관(3D 기록관). 지금 모드는 `pathname.startsWith('/museum')` 로 정한다.
   - 메뉴는 바깥 `pointerdown` 이나 `Escape` 로 닫힌다. 메뉴 끝에 `테마 바꾸기`(같은 `toggleTheme`).
-  - 안내 말풍선: `/museum` 이 아닌 곳에서 900ms 뒤 한 번 뜬다. 단 첫 방문에는 검색 안내(search 의 `TIP_KEY`)가 먼저라, 첫 렌더 때 `localStorage['evan-log:search-tip']` 가 `'1'` 이 아니면 이번 방문은 띄우지 않고 표시도 남기지 않는다(그래서 보통 두 번째 방문에 뜬다). 띄우기로 정한 순간 `localStorage['evan-log:museum-hint'] = '1'` 을 써서 다시 띄우지 않는다. `Escape`, `닫기`, `둘러보기 →`, 모드 버튼 누르기로 닫힌다. 메뉴가 열려 있으면 숨는다.
+  - 안내 말풍선: `/museum` 이 아닌 곳에 처음 온 방문자에게 900ms 뒤 한 번 뜬다. 띄우기로 정한 순간 `localStorage['evan-log:museum-hint'] = '1'` 을 써서 다시 띄우지 않는다. `Escape`, `닫기`, `둘러보기 →`, 모드 버튼 누르기로 닫힌다. 메뉴가 열려 있으면 숨는다.
 - **좁은 화면**: 760px 이하에서 모드 버튼의 `모드` 글자를 숨긴다. 460px 이하에서는 모드 버튼을 건물 아이콘(36px)만 남기고, 머리말 테마 버튼(`.site-nav .theme-btn`)을 숨기고 메뉴 안 `.mode__theme` 를 보인다. 400px 이하에서 머리말 간격을 8px 로 줄인다(360px 폰에서도 한 줄).
 - **머리말 순서**: 워드마크 `evan.log`(→ `/`), `기술 노트`(`/#note`), `독후감`(`/#book`), `연구실`(`/#lab`), 검색, 테마, 모드. 바닥글은 GitHub·Medium 링크.
 - **움직임**: 반복 애니메이션 금지(첫 화면 커서 막대도 깜빡이지 않는다). `prefers-reduced-motion: reduce` 블록에서 전환·입장 애니메이션을 끈다.
@@ -138,9 +138,8 @@ export function ModeMenu(): JSX.Element;
 | --- | --- | --- |
 | browse | shell → browse | `layout.tsx` 가 `Droplets`(전역 물방울·`#goo` 필터)와 `HashLink` 를 그린다. 목록·필터 스타일은 `globals.css` |
 | search | shell → search | `layout.tsx` 가 `getSearchItems()`(본문 제외)를 불러 `SearchPalette` 에 넘긴다. 검색 스타일은 `globals.css` |
-| search | shell → search | `ModeMenu` 가 `SearchPalette` 의 `TIP_KEY` 를 import 해 읽고, 검색 안내를 본 다음 방문에 박물관 말풍선을 띄운다. 말풍선 모양(`.mode__hint*`)은 검색 안내도 함께 쓴다 |
 | museum | 양방향 | `ModeMenu` 가 `/museum` 으로 링크하고 안내 말풍선을 띄운다. 박물관 스타일과 `--m-*` 토큰은 `globals.css` 안에 있지만 museum 소속 |
 | posts / playgrounds / lab | shell → 각 도메인 | 스타일과 토큰만 제공한다. posts 의 `NextNav` 가 `<html data-reading-done>` 을 단다 |
 | 외부 | shell → `@vercel/analytics/next` | `<Analytics />` |
 
-최종 갱신: 2026-11-07
+최종 갱신: 2026-11-06
