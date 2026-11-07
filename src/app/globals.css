@@ -495,15 +495,27 @@ button:active:not(:disabled) {
   column-gap: 14px;
   width: 280px;
   padding: 14px 16px;
-  border: 1px solid var(--line-strong);
+  /* 누르게 하려고 테두리부터 강조색으로 둔다. 첫 화면에서 강조색 테두리는 이 입구 하나뿐이다 */
+  border: 1px solid var(--accent);
   border-radius: var(--radius);
   text-decoration: none;
   color: var(--ink);
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  animation: rise var(--dur-slow) var(--ease-out) var(--dur-fast) both;
-  transition: border-color var(--dur-instant) ease-out;
+  /* 떠오른 뒤 테두리 빛이 한 번 퍼졌다 사라진다(반복하지 않는다) */
+  animation:
+    rise var(--dur-slow) var(--ease-out) var(--dur-fast) both,
+    door-glow 1400ms var(--ease-out) calc(var(--dur-slow) + var(--dur-fast)) 1 both;
+  transition: box-shadow var(--dur-instant) ease-out;
+}
+@keyframes door-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
 }
 /* 목록 행과 같은 차오르는 바탕(Droplets FILL) */
 .museum-door::before {
@@ -519,10 +531,10 @@ button:active:not(:disabled) {
   clip-path: circle(150% at var(--px, 50%) var(--py, 50%));
 }
 .museum-door:is(:hover, :focus-visible) {
-  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .museum-door__icon {
-  color: var(--ink);
+  color: var(--accent);
 }
 .museum-door__text {
   display: flex;
@@ -535,13 +547,23 @@ button:active:not(:disabled) {
   font-size: 12px;
   color: var(--ink-70);
 }
+.museum-door__label {
+  color: var(--accent);
+}
 .museum-door__title {
   font-size: 17px;
   font-weight: 500;
 }
+/* 입장 버튼: 강조색으로 채운 동그라미에 바탕색 화살표 */
 .museum-door__arrow {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   font-size: 16px;
-  color: var(--accent);
+  color: var(--bg);
+  background-color: var(--accent);
   transition: transform var(--dur-fast) var(--ease-out);
 }
 .museum-door:is(:hover, :focus-visible) .museum-door__arrow {

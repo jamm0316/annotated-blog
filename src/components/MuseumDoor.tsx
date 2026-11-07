@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 
+// 테두리·아이콘·라벨·입장 버튼(→)을 강조색으로 두고 들어올 때 테두리 빛이 한 번 퍼진다(globals.css 의 door-glow). 누르도록 이끄는 자리라서다.
 // 박공지붕 건물 아이콘은 머리말 모드 버튼(좁은 폰)과 같은 모양이다. 같은 그림이 같은 곳(박물관)으로 간다고 익히게 한다.
 // count 는 실제 진열대 수(getExhibits().length)만 받는다
 export function MuseumDoor({ count }: { count: number }) {
