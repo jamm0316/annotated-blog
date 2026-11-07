@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { TIP_KEY } from './SearchPalette';
 import { toggleTheme } from './ThemeToggle';
 
 const MODES = [
@@ -13,7 +14,8 @@ const MODES = [
   { href: '/museum', label: '박물관', note: '3D 기록관' },
 ] as const;
 
-// 처음 온 방문자에게 한 번만 박물관 모드를 알리는 말풍선. 이 브라우저에서 한 번 보이면 다시 띄우지 않는다
+// 처음 온 방문자에게 한 번만 박물관 모드를 알리는 말풍선. 이 브라우저에서 한 번 보이면 다시 띄우지 않는다.
+// 첫 방문에는 검색 안내(SearchPalette 의 TIP_KEY)가 먼저 뜨므로, 이 말풍선은 검색 안내를 본 다음 방문에 띄운다
 const HINT_KEY = 'evan-log:museum-hint';
 
 // 머리말 오른쪽 끝의 모드 고르기. 읽기(글 목록)와 박물관(3D 기록관) 사이를 오간다.
@@ -29,6 +31,8 @@ export function ModeMenu() {
     if (pathname.startsWith('/museum')) return;
     let seen = true;
     try {
+      // 검색 안내를 아직 안 봤으면 이번 방문은 그쪽 차례다. 박물관 말풍선은 다음 방문으로 미룬다
+      if (localStorage.getItem(TIP_KEY) !== '1') return;
       seen = localStorage.getItem(HINT_KEY) === '1';
       if (!seen) localStorage.setItem(HINT_KEY, '1');
     } catch {}
