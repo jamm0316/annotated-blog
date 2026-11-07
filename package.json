@@ -17,6 +17,7 @@
     "@vercel/oidc": "^4.0.7",
     "gray-matter": "^4.0.3",
     "next": "16.4.2",
+    "postgres": "^3.4.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "rehype-pretty-code": "^0.14.5",

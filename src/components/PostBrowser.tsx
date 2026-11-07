@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type PointerEvent } from 'react';
 import { AREAS } from '@/lib/areas';
 import type { LabItem } from '@/lib/lab';
+import type { Rank } from '@/lib/stats';
 import { LabGrid } from './LabGrid';
 import { LiquidChips, LiquidTabs, type TabItem } from './LiquidTabs';
 
@@ -23,6 +24,8 @@ export type BrowserPost = {
   summary: string;
   hook: string;
   excerpt: string;
+  /** 조회수로 정한 표식(stats 도메인). 없으면 null */
+  rank: Rank | null;
 };
 
 const CATEGORY_LABEL = { note: '기술 노트', book: '독후감', lab: '연구실' } as const;
@@ -250,6 +253,11 @@ function PostRow({ post, index }: { post: BrowserPost; index: number }) {
           <span className="mono row__topic">
             [{post.topic}]{post.lang === 'en' && ' English'}
             {post.series && <span className="row__series"> {post.series}</span>}
+            {post.rank && (
+              <span className={`row__rank row__rank--${post.rank}`} aria-label={post.rank === 'hot' ? '요즘 많이 읽는 글' : '가장 많이 읽은 글'}>
+                {post.rank === 'hot' ? 'HOT' : 'BEST'}
+              </span>
+            )}
           </span>
           <span className="row__title" lang={post.lang}>
             {post.title}

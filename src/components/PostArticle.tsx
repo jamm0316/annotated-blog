@@ -2,6 +2,7 @@
 // @MX:SPEC: .claude/docs/domains/posts.md
 
 import { EndMark } from '@/components/EndMark';
+import { ViewBeacon } from '@/components/ViewBeacon';
 import { formatDate, type PostMeta } from '@/lib/posts';
 
 // 글 본문(머리·MDX·EOF). 글 페이지와 박물관의 읽기 창이 함께 쓴다.
@@ -38,6 +39,8 @@ export async function PostArticle({ post }: { post: PostMeta }) {
         <Body />
       </div>
       <EndMark />
+      {/* 10초 넘게 읽으면 조회 한 번(stats 도메인). 글 페이지와 박물관 두루마리 모두 센다 */}
+      <ViewBeacon slug={post.slug} />
     </article>
   );
 }

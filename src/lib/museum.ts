@@ -2,6 +2,7 @@
 // @MX:SPEC: .claude/docs/domains/museum.md
 import { LAB } from '@/lib/lab';
 import { getPosts, type Quiz } from '@/lib/posts';
+import type { PostStats, Rank } from '@/lib/stats';
 
 // 박물관 모드의 진열품. 글과 연구실 항목에서 자동으로 만든다. 글을 올리면 진열대가 저절로 하나 늘어난다.
 export type PropKind =
@@ -40,6 +41,10 @@ export type Exhibit = {
   quiz: Quiz | null;
   /** 가장 최근 글 하나에만 NEW 리본과 조명을 단다 */
   isNew: boolean;
+  /** 조회수로 정한 표식(stats 도메인). HOT 은 뚜껑 둘레 빛 테, BEST 는 몸통 금 메달. NEW 인 진열대에는 달지 않는다 */
+  rank: Rank | null;
+  /** 지금까지 읽은 사람 수. 설명판에만 보인다(진열대에는 새기지 않는다) */
+  views: number;
 };
 
 // series 는 '캐시 · 2/3' 꼴. 모양이 다르면 연재로 보지 않는다
@@ -78,6 +83,8 @@ export function getExhibits(): Exhibit[] {
     series: seriesOf(p.series),
     quiz: p.quiz,
     isNew: p.slug === newest,
+    rank: null,
+    views: 0,
   }));
   const lab: Exhibit[] = LAB.map((item) => ({
     id: `lab:${item.repo}`,
@@ -92,6 +99,17 @@ export function getExhibits(): Exhibit[] {
     series: null,
     quiz: null,
     isNew: false,
+    rank: null,
+    views: 0,
   }));
   return [...posts, ...lab];
+}
+
+// 조회수 순위를 진열품에 얹는다. 한 진열대에는 표식 하나만: NEW 가 있으면 HOT·BEST 는 달지 않는다
+export function withStats(exhibits: Exhibit[], stats: PostStats): Exhibit[] {
+  return exhibits.map((e) => ({
+    ...e,
+    rank: e.isNew ? null : (stats.ranks[e.id] ?? null),
+    views: stats.views[e.id] ?? 0,
+  }));
 }

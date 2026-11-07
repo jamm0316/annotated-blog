@@ -4,7 +4,7 @@
 
 ## 코드 위치
 
-- `src/app/page.tsx` — 첫 화면. 글 목록을 클라이언트용 필드로 줄여 `PostBrowser` 에 넘긴다
+- `src/app/page.tsx` — 첫 화면. 글 목록을 클라이언트용 필드로 줄여 `PostBrowser` 에 넘긴다. `revalidate = 3600` 으로 한 시간마다 다시 만들며 `getPostStats()`(stats)의 순위를 `rank` 로 얹는다
 - `src/components/PostBrowser.tsx` — 탭·칩 필터, 주소 해시 동기화, `j`/`k` 키, 목록 행(`PostRow`)과 미리보기 타이핑
 - `src/components/LiquidTabs.tsx` — `LiquidTabs`(하나만 고르는 탭), `LiquidChips`(여러 개 고르는 칩)
 - `src/components/MuseumDoor.tsx` — 히어로 오른쪽 박물관 입구(`/museum` 링크). 진열대 수는 `getExhibits().length`
@@ -21,6 +21,7 @@
 | 필드 | 타입 | 비고 |
 | --- | --- | --- |
 | slug, title, topic, series, badge, date, lang, summary, hook, excerpt | `string` | `series`·`badge`·`summary`·`hook` 은 빈 문자열일 수 있다 |
+| rank | `'hot' \| 'best' \| null` | 조회수로 정한 표식(stats 도메인). 행의 `[주제]` 줄 끝에 `HOT`(강조색으로 채움) / `BEST`(강조색 테두리) 고정폭 라벨(`.row__rank`). 수치 배지(`.badge`)와는 모양을 다르게 둔다. 조회수 숫자는 목록에 보이지 않는다 |
 | category | `'note' \| 'book'` | |
 | areas | `string[]` | 기술 노트 2단계 칩(JD 역량). 한 글이 여럿에 들 수 있다 |
 
@@ -67,7 +68,7 @@
 
 ```ts
 // PostBrowser.tsx
-export type BrowserPost = { slug; title; category: 'note' | 'book'; topic; areas: string[]; series; badge; date; lang; summary; hook; excerpt };
+export type BrowserPost = { slug; title; category: 'note' | 'book'; topic; areas: string[]; series; badge; date; lang; summary; hook; excerpt; rank: Rank | null };
 export function PostBrowser(props: { posts: BrowserPost[]; lab: LabItem[] }): JSX.Element;
 
 // LiquidTabs.tsx

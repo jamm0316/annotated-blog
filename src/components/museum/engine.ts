@@ -24,6 +24,9 @@ export type MuseumOptions = {
 const HALL_NAME = { note: '기술 노트관', lab: '연구실 별관', book: '로비 책장' } as const;
 type TrophyKind = keyof typeof HALL_NAME | 'bug';
 
+/** 설명판에 조회수를 보이기 시작하는 사람 수. 초반의 아주 작은 숫자는 보이지 않는다 */
+const VIEWS_SHOW = 10;
+
 const C = {
   floorA: 0xe6cfae,
   floorB: 0xd6b88f,
@@ -53,6 +56,9 @@ const C = {
   beak: 0xffa23c,
   bell: 0xf2c14e,
   gold: 0xf2b632,
+  // 조회수 표식. HOT 은 뚜껑 둘레 따뜻한 빛 테, BEST 는 몸통 금 메달의 리본 꼬리
+  hot: 0xff4d2e,
+  ribbon: 0xd2443a,
   cloth: 0xefe2cc,
   sky: 0xf7e7cf,
 };
@@ -510,6 +516,31 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     scene.add(sunArt, hill);
   });
 
+  // 조회수 표식(stats 도메인). 멀리서 모양으로 알아보게 하고 숫자는 새기지 않는다. 깜빡이지 않는다(반복 애니메이션 금지)
+  const hotMat = new THREE.MeshBasicMaterial({ color: C.hot });
+  k.disposables.push(hotMat);
+  function decorate(g: THREE.Object3D, exhibit: Exhibit) {
+    if (exhibit.rank === 'hot') {
+      // 뚜껑 둘레에 스스로 빛나는 테
+      const band = at(new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.045, 10, 40), hotMat), 0, 0.75, 0);
+      band.rotation.x = Math.PI / 2;
+      k.disposables.push(band.geometry);
+      g.add(band);
+    } else if (exhibit.rank === 'best') {
+      // 카메라 쪽 몸통에 금 메달과 리본 꼬리 두 갈래
+      const medal = at(new THREE.Group(), 0, 0.48, 0.31);
+      const disc = cyl(0.14, 0.14, 0.04, C.gold);
+      disc.rotation.x = Math.PI / 2;
+      medal.add(disc, at(ball(0.06, C.cream, 12), 0, 0, 0.025));
+      [-1, 1].forEach((s) => {
+        const tail = at(box(0.07, 0.2, 0.02, C.ribbon), s * 0.055, -0.16, -0.005);
+        tail.rotation.z = s * 0.25;
+        medal.add(tail);
+      });
+      g.add(medal);
+    }
+  }
+
   // 진열대
   const glass = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, shininess: 120, depthWrite: false });
   const domeGeo = new THREE.SphereGeometry(0.3, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -549,6 +580,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     const dome = at(new THREE.Mesh(domeGeo, glass), 0, 0.78, 0);
     g.add(pr, dome);
     lightPool(x + 0.5, z + 0.5);
+    decorate(g, exhibit);
     if (exhibit.isNew) {
       beam = at(new THREE.Mesh(beamGeo, beamMat), x + 0.5, 1.7, z + 0.5);
       newPos = new THREE.Vector3(x + 0.5, 2.75, z + 0.5);
@@ -582,6 +614,14 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
       }
     });
     g.add(at(box(0.75, 0.08, 2.08, C.wood), 0, 1.84, 0));
+    // 책장은 몸통이 없어 메달·빛 테 대신 꼭대기 앞쪽에 메달 하나를 세운다(HOT 은 빨강, BEST 는 금)
+    if (exhibit.rank) {
+      const medal = at(new THREE.Group(), 0, 2.05, 0.8);
+      medal.add(at(cyl(0.17, 0.17, 0.05, exhibit.rank === 'hot' ? C.hot : C.gold), 0, 0, 0));
+      medal.children[0].rotation.x = Math.PI / 2;
+      medal.add(at(ball(0.07, C.cream, 12), 0, 0, 0.03));
+      g.add(medal);
+    }
     g.userData.exhibit = exhibit;
     scene.add(g);
     pickables.push(g);
@@ -1233,7 +1273,13 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     const sr = ex.series;
     const mark = passport.stamps[ex.id] === 2 ? '금도장' : passport.stamps[ex.id] ? '도장 찍음' : '';
     const lines = [`[${ex.topic}] ${ex.title}${reason ? `\n${reason}` : ''}`];
-    const extra = [sr ? `${sr.name} 연재 ${sr.no}/${sr.of}편` : '', mark ? `수첩: ${mark}` : ''].filter(Boolean);
+    const extra = [
+      sr ? `${sr.name} 연재 ${sr.no}/${sr.of}편` : '',
+      ex.rank === 'hot' ? '요즘 많이 읽는 글' : ex.rank === 'best' ? '가장 많이 읽은 글' : '',
+      // 숫자는 실제로 잰 값만, 너무 작을 때는 보이지 않는다(stats 도메인의 VIEWS_SHOW)
+      ex.views >= VIEWS_SHOW ? `지금까지 ${ex.views.toLocaleString('ko-KR')}명이 읽었어요` : '',
+      mark ? `수첩: ${mark}` : '',
+    ].filter(Boolean);
     if (extra.length) lines[0] += `\n${extra.join(' · ')}`;
     const next = nextInSeries(spot);
     const list: Choice[] = [

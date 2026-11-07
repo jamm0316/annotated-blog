@@ -9,6 +9,7 @@ import { Droplets } from '@/components/Droplets';
 import { HashLink } from '@/components/HashLink';
 import { ModeMenu } from '@/components/ModeMenu';
 import { SearchPalette } from '@/components/SearchPalette';
+import { VisitCounter } from '@/components/VisitCounter';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getSearchItems } from '@/lib/search';
 import './globals.css';
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             <span>
               evan<span className="accent">.log</span> · Evan, 백엔드 개발자
             </span>
+            <VisitCounter />
             <span className="site-footer__links">
               <a href="https://github.com/jamm0316">GitHub</a>
               <a href="https://medium.com/@evanbackeng">Medium</a>

@@ -12,7 +12,7 @@
 | `src/components/museum/Reader.tsx` | 두루마리(`<dialog>`). 끝까지 내리면 도장 |
 | `src/components/museum/passport.ts` | 관람 수첩 localStorage 저장소와 CustomEvent 이름 |
 | `src/app/museum/layout.tsx` | `children` 위에 `@reader` 슬롯을 겹친다 |
-| `src/app/museum/page.tsx` | `/museum` 페이지. 메타데이터, `<Museum exhibits={getExhibits()} />`, 키 안내 줄 |
+| `src/app/museum/page.tsx` | `/museum` 페이지. 메타데이터, `withStats(getExhibits(), await getPostStats())` 를 `<Museum exhibits>` 에 넘김, 키 안내 줄. `revalidate = 3600`(조회수 표식을 한 시간마다 다시 얹는다) |
 | `src/app/museum/@reader/page.tsx`, `default.tsx` | 읽기 창이 없을 때 `null` |
 | `src/app/museum/@reader/(..)posts/[slug]/page.tsx` | `/posts/<slug>` 가로채기. `Reader` 안에 `PostArticle` |
 
@@ -36,6 +36,8 @@
 | `series` | `{ name; no; of } \| null` | frontmatter `series` 가 `이름 · n/m` 모양일 때만(`/^(.+?)\s*·\s*(\d+)\/(\d+)$/`) |
 | `quiz` | `Quiz \| null` | posts 의 `{ q, choices, answer }` |
 | `isNew` | `boolean` | `getPosts()` 첫 글(가장 최근) 하나만 `true` |
+| `rank` | `'hot' \| 'best' \| null` | `getExhibits` 는 null, `withStats` 가 stats 의 순위를 얹는다. **NEW 진열대에는 달지 않는다**(한 진열대에 표식 하나, NEW → HOT → BEST) |
+| `views` | `number` | 지금까지 읽은 사람 수(stats). `getExhibits` 는 0. 연구실은 늘 0 |
 
 `PropKind`: `db · down · phone · shield · scroll · key · bot · branch · leaf · calendar · book · monitor`.
 `PROP_BY_TOPIC`: 캐시→db, 다운로드 API→down, 2단계 인증→phone, 입력 정제→shield, 감사 로그→scroll, 권한 모델→key, AI 코딩→bot, Git→branch, MongoDB→leaf, 회고→calendar.
@@ -53,6 +55,10 @@
 - 칸 기호 `Cell`: `#` 벽, `.` 바닥, `P` 진열대, `D` 책상, `B` 책장, `O` 부엉이, `T` 화분, `C` 기둥, `R` 받침대. `.` 만 걸을 수 있다. 클릭 이동은 칸 단위 BFS(`route`).
 - **연재 길**: 같은 `series.name` 진열대가 둘 이상이면 `no` 순으로 잇는 점선(간격 0.44)과 편 번호 배지를 깐다. 평소엔 꺼져 있고, 진열대 1.5 안에 들어서면 그 자리에서부터 `TRAIL_SPEED = 7` 칸/초로 한 칸씩 켜지며(한 칸 `LAMP_POP = 140`ms), 진열대와 점선 모두에서 2 넘게 멀어지면 꺼진다(`updateTrails`). 책장(독후감)은 연재 길에 들어가지 않는다(`spotDefs` 만 본다).
 - **NEW**: `isNew` 진열대에 빛기둥과 `NEW` 태그. 그 글에 도장이 찍히면 둘 다 끈다(`refresh`).
+- **HOT·BEST**(stats 도메인, `decorate`): 멀리서 모양으로 알아보게 하고 진열대에 숫자를 새기지 않는다. 움직이지 않는다.
+  - HOT: 뚜껑 둘레에 스스로 빛나는 테(`MeshBasicMaterial`, `C.hot`, 토러스 반지름 0.36).
+  - BEST: 카메라 쪽 몸통에 금 메달(`C.gold` 원판 + 크림 가운데)과 리본 꼬리 두 갈래(`C.ribbon`).
+  - 책장(독후감)은 몸통이 없어 꼭대기 앞쪽에 메달 하나(HOT 빨강, BEST 금).
 - 빛은 들어온 시각으로 한 번 정한다: 19시~6시 전 `night`(유리 돔 발광·받침 아래 불빛 웅덩이·리셉션 램프), 6~9시 전·17시~ `dusk`, 그 밖 `day`.
 
 ### 관 이름과 관 이름 표시
@@ -68,7 +74,7 @@
 - 대사가 끝나면 `owlMenu`: **질문하기**(입력창, `maxLength` 200 → `options.ask`) / **그만 대화하기**(`close`).
 - 입력 안내는 '글 찾기든 Evan 이야기든 물어보세요.', 예시는 '이 사람은 어떤 개발자야?'. 글 찾기뿐 아니라 블로그·Evan 에 관한 물음과 인사에도 답한다(범위는 search spec 의 `/api/ask` 규칙).
 - 답: 먼저 부엉이가 `answer` 를 말한다. `bubbles` 가 문장 단위로 한 칸 90자 안팎에 맞춰 나눈다. 고른 진열대가 있으면 이어서 바닥에 파란 고리(`C.mark`, 주황의 보색)를 켜고 '바닥에 파란 동그라미로 N곳을 그려 뒀어요' 뒤에 진열대별 선택지(`short` + 이유) + '괜찮아요'. 고르면 그 진열대 앞으로 걸어가 설명판을 연다. 고른 진열대가 없으면 답만 하고 `owlMenu` 로 돌아간다(답도 비면 '맞는 진열대를 못 찾았어요…'). `ask` 가 던진 Error 의 문구는 그대로 말한다.
-- 설명판(`placard`): `[topic] title`, 연재 `n/m편`, 수첩 상태. 선택지 '글 읽기'(연구실은 '새 탭에서 보기'), '돔 열어 보기'(E), '다음 편', 도장 1 이고 퀴즈가 있으면 '퀴즈 풀기', '닫기'.
+- 설명판(`placard`): `[topic] title`, 연재 `n/m편`, '요즘 많이 읽는 글'(HOT)·'가장 많이 읽은 글'(BEST), `views` 가 `VIEWS_SHOW = 10` 이상이면 '지금까지 N명이 읽었어요'(실제로 잰 값, 초반의 작은 숫자는 보이지 않는다), 수첩 상태. 선택지 '글 읽기'(연구실은 '새 탭에서 보기'), '돔 열어 보기'(E), '다음 편', 도장 1 이고 퀴즈가 있으면 '퀴즈 풀기', '닫기'.
 - **대화창 닫기**: 대사를 끝까지 넘기지 않아도 오른쪽 위 `닫기 ✕` 버튼(`.museum__skip`) 또는 Esc 로 `close()` 한다. `close` 는 큐·선택지를 비우고 캔버스로 포커스를 돌린다.
 
 ### 도장 규칙

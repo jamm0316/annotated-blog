@@ -4,7 +4,7 @@
 
 ## 코드 위치
 
-- `src/app/layout.tsx` — 루트 레이아웃. 글꼴 세 벌, `metadata`, 깜빡임 막는 테마 스크립트, 머리말(`HashLink`·`SearchPalette`·`ThemeToggle`·`ModeMenu`), 바닥글, `Droplets`, Vercel `Analytics`
+- `src/app/layout.tsx` — 루트 레이아웃. 글꼴 세 벌, `metadata`, 깜빡임 막는 테마 스크립트, 머리말(`HashLink`·`SearchPalette`·`ThemeToggle`·`ModeMenu`), 바닥글(가운데 `VisitCounter`, stats 도메인), `Droplets`, Vercel `Analytics`
 - `src/components/ThemeToggle.tsx` — `toggleTheme()`(빗방울 전환)과 머리말 테마 버튼
 - `src/components/ModeMenu.tsx` — 머리말 오른쪽 끝 모드 메뉴와 첫 방문 안내 말풍선
 - `src/app/globals.css` — 디자인 토큰과 사이트 전체 스타일(약 3000줄). 섹션별 소유 도메인은 아래 표
@@ -88,7 +88,7 @@
   - 메뉴는 바깥 `pointerdown` 이나 `Escape` 로 닫힌다. 메뉴 끝에 `테마 바꾸기`(같은 `toggleTheme`).
   - 안내 말풍선: `/museum` 이 아닌 곳에 처음 온 방문자에게 900ms 뒤 한 번 뜬다. 띄우기로 정한 순간 `localStorage['evan-log:museum-hint'] = '1'` 을 써서 다시 띄우지 않는다. `Escape`, `닫기`, `둘러보기 →`, 모드 버튼 누르기로 닫힌다. 메뉴가 열려 있으면 숨는다.
 - **좁은 화면**: 760px 이하에서 모드 버튼의 `모드` 글자를 숨긴다. 460px 이하에서는 모드 버튼을 건물 아이콘(36px)만 남기고, 머리말 테마 버튼(`.site-nav .theme-btn`)을 숨기고 메뉴 안 `.mode__theme` 를 보인다. 400px 이하에서 머리말 간격을 8px 로 줄인다(360px 폰에서도 한 줄).
-- **머리말 순서**: 워드마크 `evan.log`(→ `/`), `기술 노트`(`/#note`), `독후감`(`/#book`), `연구실`(`/#lab`), 검색, 테마, 모드. 바닥글은 GitHub·Medium 링크.
+- **머리말 순서**: 워드마크 `evan.log`(→ `/`), `기술 노트`(`/#note`), `독후감`(`/#book`), `연구실`(`/#lab`), 검색, 테마, 모드. 바닥글은 왼쪽 `evan.log · Evan, 백엔드 개발자`, 가운데 방문자 수 `today N · total M`(`VisitCounter`, 숫자를 받기 전·실패하면 비어 있다), 오른쪽 GitHub·Medium 링크.
 - **움직임**: 반복 애니메이션 금지(첫 화면 커서 막대도 깜빡이지 않는다). `prefers-reduced-motion: reduce` 블록에서 전환·입장 애니메이션을 끈다.
 
 ### 핵심 설계 결정
@@ -142,4 +142,4 @@ export function ModeMenu(): JSX.Element;
 | posts / playgrounds / lab | shell → 각 도메인 | 스타일과 토큰만 제공한다. posts 의 `NextNav` 가 `<html data-reading-done>` 을 단다 |
 | 외부 | shell → `@vercel/analytics/next` | `<Analytics />` |
 
-최종 갱신: 2026-11-06
+최종 갱신: 2026-11-07

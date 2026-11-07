@@ -106,7 +106,7 @@ default function remarkUnnestLinks(): (tree) => void;
 
 ### 컴포넌트 props
 
-- `PostArticle({ post: PostMeta })` — async 서버 컴포넌트. `<article class="article" lang={post.lang}>`, 머리(`[topic]`, `#tag`, 제목, 설명, 날짜·`N분`·연재), `<div class="prose" data-prose>` 본문, `EndMark`.
+- `PostArticle({ post: PostMeta })` — async 서버 컴포넌트. `<article class="article" lang={post.lang}>`, 머리(`[topic]`, `#tag`, 제목, 설명, 날짜·`N분`·연재), `<div class="prose" data-prose>` 본문, `EndMark`, `<ViewBeacon slug>`(stats 도메인: 10초 넘게 읽으면 조회 한 번, 글 페이지와 두루마리 모두).
 - `Toc()` — props 없음. 'use client'. 소제목이 없으면 아무것도 그리지 않는다.
 - `NextNav({ items: { slug; title; description; date; reason }[] })` — 'use client'. `date` 는 호출하는 쪽이 `formatDate` 로 바꿔 넘긴다.
 - `EndMark()` — props 없음. 'use client'.
@@ -134,4 +134,4 @@ default function remarkUnnestLinks(): (tree) => void;
 - **museum → posts**: `src/lib/museum.ts` 가 `getPosts()` 와 `Quiz` 를 import 해 진열품을 만든다(`short`, `quiz` 사용). `src/app/museum/@reader/(..)posts/[slug]/page.tsx` 가 `getPosts`·`getPost`·`PostArticle` 을 써서 두루마리에 본문을 싣는다(이쪽은 `dynamicParams` 를 false 로 두지 않는다).
 - **posts → shell**: 레이아웃·토큰·`data-current`·`data-reading-done`·`.prose` 스타일은 `src/app/globals.css` 에 있다.
 
-최종 갱신: 2026-11-06
+최종 갱신: 2026-11-07

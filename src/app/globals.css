@@ -667,6 +667,26 @@ button:active:not(:disabled) {
 .row__series {
   color: var(--ink-70);
 }
+/* 조회수로 정한 표식. 수치 배지(.badge, 테두리)와 헷갈리지 않게 강조색으로 채운다 */
+.row__rank {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+  vertical-align: 1px;
+  color: var(--bg);
+  background-color: var(--accent);
+}
+/* BEST 는 오래 쌓인 기록이라 한 단계 차분하게: 테두리만 */
+.row__rank--best {
+  color: var(--accent);
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
 .row__title {
   font-size: 19px;
   line-height: 1.5;
@@ -2100,6 +2120,11 @@ button:active:not(:disabled) {
 .site-footer__links {
   display: flex;
   gap: 16px;
+}
+/* 방문자 수. 숫자는 /api/visit 가 돌려준 실제 값 */
+.visit-counter__n {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 .site-footer__links a {
   transition: color var(--dur-instant) ease-out;

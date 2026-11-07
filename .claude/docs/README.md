@@ -20,6 +20,7 @@
 | [shell](domains/shell.md) | 공통 머리말·테마·모드 메뉴·디자인 토큰(globals.css) |
 | [search](domains/search.md) | `/`·⌘K 검색 팔레트와 자연어 질문 API(`/api/ask`) |
 | [museum](domains/museum.md) | 박물관 모드(3D 기록관, 두루마리 읽기, 관람 수첩) |
+| [stats](domains/stats.md) | 방문자 수·글 조회수(Supabase Postgres)와 BEST·HOT 표식 |
 
 spec 의 사실은 코드에서 확인한 것만 쓴다. 숫자도 코드에 있는 상수만 쓴다. 공개 저장소이므로 회사·고객사 이름이나 내부 주소를 쓰지 않는다.
 
