@@ -111,6 +111,12 @@ default function remarkUnnestLinks(): (tree) => void;
 - `NextNav({ items: { slug; title; description; date; reason }[] })` — 'use client'. `date` 는 호출하는 쪽이 `formatDate` 로 바꿔 넘긴다.
 - `EndMark()` — props 없음. 'use client'.
 
+### 본문 링크
+
+- MDX 의 `a` 는 `src/mdx-components.tsx` 가 바꿔 끼운다. `/` 로 시작하는 내부 링크는 `next/link`(`prefetch={false}`), 나머지는 일반 `<a>`.
+- prefetch 를 끄는 까닭: 박물관 두루마리 안에서 미리 받으면 가로채기 응답이 `/posts/<slug>` 캐시로 남아(Vary 에 `Next-Url` 없음) 박물관 밖에서 그 글을 열 때 섞일 수 있다.
+- 내 Medium 글(`medium.com/@evanbackeng/...`)로 가는 링크는 이 블로그의 같은 글 `/posts/<slug>` 로 쓴다. 다른 사람의 Medium 프로필(`medium.com/u/...`)은 그대로 둔다.
+
 ### DOM 계약
 
 - `[data-prose]`: `PostArticle` 이 달고 `Toc` 가 찾는다.

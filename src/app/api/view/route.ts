@@ -1,4 +1,4 @@
-// @MX:NOTE: POST /api/view. 글을 실제로 읽은 조회를 한 사람·하루·글마다 한 번 기록한다(ViewBeacon)
+// @MX:NOTE: POST /api/view 는 글을 실제로 읽은 조회를 한 사람·하루·글마다 한 번 기록하고(ViewBeacon), GET 은 글의 조회수를 돌려준다(ViewCount)
 // @MX:SPEC: .claude/docs/domains/stats.md
 import { db, ensureSchema, foreignOrigin, isBot, kstDay, visitorHash } from '@/lib/db';
 import { getPosts } from '@/lib/posts';
@@ -25,5 +25,23 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[view]', error);
     return Response.json({ error: '지금은 셀 수 없습니다.' }, { status: 502 });
+  }
+}
+
+// @MX:ANCHOR: GET /api/view?slug= · 응답 { views } | { error } 계약
+// @MX:REASON: ViewCount(글 머리 조회수)가 이 모양으로 읽는다. views = 지금까지 읽은 사람 수(하루에 한 사람 한 번)
+export async function GET(request: Request) {
+  const slug = new URL(request.url).searchParams.get('slug') ?? '';
+  if (!getPosts().some((p) => p.slug === slug)) return Response.json({ error: '없는 글입니다.' }, { status: 400 });
+  const sql = db();
+  if (!sql) return Response.json({ error: '조회수를 읽을 수 없습니다.' }, { status: 503 });
+  try {
+    await ensureSchema(sql);
+    const [row] = await sql<{ n: number }[]>`select count(*)::int as n from post_views where slug = ${slug}`;
+    // 같은 글을 여러 사람이 열어도 DB 를 매번 읽지 않게 CDN 에 1분 둔다
+    return Response.json({ views: row?.n ?? 0 }, { headers: { 'cache-control': 'public, s-maxage=60, stale-while-revalidate=300' } });
+  } catch (error) {
+    console.error('[view]', error);
+    return Response.json({ error: '지금은 읽을 수 없습니다.' }, { status: 502 });
   }
 }

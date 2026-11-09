@@ -3,6 +3,7 @@
 
 import { EndMark } from '@/components/EndMark';
 import { ViewBeacon } from '@/components/ViewBeacon';
+import { ViewCount } from '@/components/ViewCount';
 import { formatDate, type PostMeta } from '@/lib/posts';
 
 // 글 본문(머리·MDX·EOF). 글 페이지와 박물관의 읽기 창이 함께 쓴다.
@@ -25,6 +26,7 @@ export async function PostArticle({ post }: { post: PostMeta }) {
           <span>{formatDate(post.date)}</span>
           <span aria-hidden>·</span>
           <span>{post.readingTime}분</span>
+          <ViewCount slug={post.slug} />
           {post.series && (
             <>
               <span aria-hidden>·</span>

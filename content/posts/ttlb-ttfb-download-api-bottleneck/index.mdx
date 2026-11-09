@@ -35,7 +35,7 @@ TTLB와 TTFB는 백엔드 면접에도 자주 나오는 개념입니다. 책에�
 
 <strong>다루지 않는 것</strong>
 
-- [측정 후 해결 방향 (stream 파이프라인 재설계 등) — Part 2에서 다룹니다.](https://medium.com/%40evanbackeng/stream-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EC%84%A4%EA%B3%84-%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C-api-oom%EC%9D%84-%EC%B5%9C%EC%A0%81%ED%99%94%EB%A1%9C-%ED%92%80%EC%96%B4%EB%82%B4%EA%B8%B0-6624a99d19ee)
+- [측정 후 해결 방향 (stream 파이프라인 재설계 등) — Part 2에서 다룹니다.](/posts/stream-pipeline-download-oom)
 
 사건의 시작은 단순합니다. 채팅 로그 데이터를 CSV로 변환해 ZIP으로 다운로드 받는 API에서, 고객사가 3개월치를 호출했을 때 서버가 다운되는 장애 이슈가 들어왔습니다. 데이터 규모가 변수일 것이라는 직감이 들었고, 추측을 가설을 증명하기 위해 측정을 진행해 보았습니다.
 
@@ -212,7 +212,7 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
 
 ## 다음 글에서 다룰 것
 
-[다음 글에서는 위 두 문제를 어떻게 해결했고, 그 결과를 같은 측정 도구로 어떻게 재검증했는지 정리](https://medium.com/%40evanbackeng/stream-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EC%84%A4%EA%B3%84-%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C-api-oom%EC%9D%84-%EC%B5%9C%EC%A0%81%ED%99%94%EB%A1%9C-%ED%92%80%EC%96%B4%EB%82%B4%EA%B8%B0-6624a99d19ee)합니다.
+[다음 글에서는 위 두 문제를 어떻게 해결했고, 그 결과를 같은 측정 도구로 어떻게 재검증했는지 정리](/posts/stream-pipeline-download-oom)합니다.
 
 - Mongo cursor → Stream 파이프라인 → `StreamingResponseBody`까지 일관된 stream 재설계
 - 단기 처방(동기 streaming)과 장기 확장(비동기 + MinIO + GZIP)의 trade-off

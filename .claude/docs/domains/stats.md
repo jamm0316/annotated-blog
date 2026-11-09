@@ -10,6 +10,7 @@
 - `src/app/api/view/route.ts`: `POST /api/view`
 - `src/components/VisitCounter.tsx`: 바닥글의 `today N · total M`(클라이언트)
 - `src/components/ViewBeacon.tsx`: 글을 10초 넘게 읽으면 조회 한 번(클라이언트, `PostArticle` 안)
+- `src/components/ViewCount.tsx`: 글 머리 읽는 시간 옆의 `조회 N`(클라이언트, `PostArticle` 안). `GET /api/view?slug=` 로 읽는다
 - `next.config.ts` 의 `outputFileTracingIncludes['/api/view']`: 라우트가 요청 때 글 목록(`getPosts`)을 읽으므로 글 MDX 를 함수 번들에 싣는다
 
 ## 1. 컨텍스트 내부
@@ -32,6 +33,7 @@
 - **로봇**: User-Agent 가 비었거나 `bot|crawl|spider|slurp|preview|fetch|headless|lighthouse|monitor|curl|wget|python|axios|node-fetch` 에 걸리면 세지 않는다(`HeadlessChrome` 도 걸린다).
 - **방문**: `VisitCounter` 가 화면을 열 때 한 번 `POST /api/visit`. 레이아웃이 유지되는 클라이언트 이동에서는 다시 부르지 않는다.
 - **조회**: `ViewBeacon` 이 탭이 보이는 동안만 1초마다 시간을 더해 `READ_MS = 10_000`(10초)를 넘으면 `POST /api/view` 를 한 번(`keepalive`) 보낸다. 글 페이지와 박물관 두루마리 모두 `PostArticle` 을 쓰므로 둘 다 센다. 연구실 항목은 사이트 밖이라 세지 않는다.
+- **글 머리 조회수**: `ViewCount` 가 `GET /api/view?slug=` 로 `{ views }`(그 글의 `post_views` 줄 수)를 받아 읽는 시간 옆에 `조회 N` 으로 보인다. 0 도 실제 값이면 보인다. 받기 전·실패(400 없는 글, 503 DB 없음, 502 DB 오류)면 아무것도 보이지 않는다. CDN 에 1분(`s-maxage=60`) 둔다. 박물관 설명판은 따로 `VIEWS_SHOW` 문턱을 쓴다.
 
 ### 순위 규칙(`RANK_RULES`, 처음 값)
 
@@ -107,7 +109,7 @@ Vercel 의 Supabase 연동이 넣는다. 코드는 `POSTGRES_URL` 만 읽는다(
 | 방향 | 상대 | 방식 |
 | --- | --- | --- |
 | stats → posts | `getPosts()` 로 공개 글만 순위·조회에 넣는다 | `stats.ts`, `api/view` 가 import |
-| posts → stats | `PostArticle` 이 `<ViewBeacon slug>` 를 본문 끝에 둔다 | import |
+| posts → stats | `PostArticle` 이 `<ViewBeacon slug>` 를 본문 끝에, `<ViewCount slug>` 를 글 머리 읽는 시간 옆에 둔다 | import |
 | browse → stats | `app/page.tsx` 가 `getPostStats()` 의 `ranks` 를 `BrowserPost.rank` 로 넘기고 `PostBrowser` 가 `HOT`/`BEST` 를 그린다. `revalidate = 3600` | import |
 | museum → stats | `app/museum/page.tsx` 가 `getPostStats()` 를 `withStats` 로 진열품 `rank`·`views` 에 얹는다. 엔진이 HOT 빛 테·BEST 메달과 설명판 문구를 그린다. `revalidate = 3600` | import |
 | shell → stats | `layout.tsx` 바닥글에 `<VisitCounter />` | import |

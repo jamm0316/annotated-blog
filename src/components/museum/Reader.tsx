@@ -48,6 +48,21 @@ export function Reader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // 본문 속 다른 글 링크(/posts/<slug>)는 글 페이지로 넘어가지 않고 그 글의 두루마리로 바꿔 연다.
+  // replace 라 history 는 계속 한 칸이고, 말면 박물관으로 바로 돌아온다. ?from=museum 은 Museum.tsx 의 open 과 같은 까닭이다
+  // @MX:WARN: 위 막대의 '전체 페이지' 링크(.scroll__tag)는 가로채지 않는다
+  // @MX:REASON: 그 링크는 일부러 일반 이동으로 글 페이지 전체(목차·이어서 읽기)를 연다
+  function openLinkedPost(e: React.MouseEvent<HTMLDialogElement>) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as Element).closest('a');
+    if (!a || !paper.current?.contains(a) || a.target === '_blank') return;
+    const url = new URL(a.href, window.location.href);
+    if (url.origin !== window.location.origin || !/^\/posts\/[^/]+\/?$/.test(url.pathname)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    router.replace(`${url.pathname.replace(/\/$/, '')}?from=museum${url.hash}`);
+  }
+
   function checkEnd() {
     const p = paper.current;
     if (!p || p.scrollTop + p.clientHeight < p.scrollHeight - 80) return;
@@ -67,6 +82,7 @@ export function Reader({
       onClick={(e) => {
         if (e.target === e.currentTarget) router.back();
       }}
+      onClickCapture={openLinkedPost}
     >
       <div className="scroll">
         <div className="scroll__rod mono">

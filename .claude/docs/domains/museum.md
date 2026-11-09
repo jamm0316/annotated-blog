@@ -110,6 +110,7 @@
 - **가로채기 라우트에 `dynamicParams = false` 를 두지 않는다**: 이 라우트가 한 번 컴파일된 뒤 더한 글은 `generateStaticParams` 의 캐시된 목록에 없어 가로채기가 404 가 되고, Next 는 가로채기를 포기하고 글 페이지로 바로 넘어갔다(새 글만 두루마리 대신 글 페이지로 열리던 버그). 없는 글은 `getPost` → `notFound()` 로 막는다. (글 페이지 `src/app/posts/[slug]/page.tsx` 는 `dynamicParams = false` 를 쓴다. 둘을 맞추지 않는다.)
 - **`/posts/<slug>?from=museum` 으로 연다**: Vercel 의 prerender RSC 응답은 `Vary` 에 `Next-Url` 이 없다. 첫 화면 목록이 prefetch 한 `/posts/<slug>` 캐시를 클라이언트가 '가로채질 일 없는 주소'로 저장해 박물관에서도 재사용했고, 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만). 쿼리가 다르면 캐시를 새로 찾으므로 `Next-Url: /museum` 으로 요청해 `@reader` 가로채기를 받는다.
 - **두루마리는 history 한 칸**: 닫기·Esc·바깥 누르기·뒤로 가기 모두 `router.back()`. 박물관 장면은 언마운트되지 않아 서 있던 자리가 남는다. 새로고침·공유한 주소는 원래 글 페이지를 연다. '전체 페이지'는 일반 `<a>` 라 가로채지 않는다.
+- **두루마리 안의 다른 글 링크는 그 글의 두루마리로**: `Reader` 의 `onClickCapture`(`openLinkedPost`)가 종이(`.scroll__paper`) 안 `/posts/<slug>` 링크 클릭을 막고 `router.replace('/posts/<slug>?from=museum')` 한다. replace 라 history 는 한 칸 그대로이고, 말면 박물관으로 돌아온다. 수정 키 클릭·새 탭·밖으로 가는 링크는 그대로 둔다.
 - **떠날 때 말려 올라가기**: 박물관 밖 같은 출처 링크 클릭을 캡처 단계에서 막고 `data-leaving` 을 단 뒤 620ms 뒤 `router.push`. `dialog` 안 링크, 새 탭, `/museum*`, 수정 키 클릭, 움직임 줄이기는 그대로 둔다. 들어올 때 펼쳐지는 것은 CSS(`museum-unroll`).
 
 ### 실시간 관람객(`presence.ts`, engine 의 `social`)

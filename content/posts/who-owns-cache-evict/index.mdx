@@ -20,7 +20,7 @@ draft: false
 
 <Figure src="/posts/who-owns-cache-evict/01.png" alt="" width={1376} height={768} />
 
-이전 글에서 [캐시를 붙이기 전에 고려해야할 3가지 질문](https://medium.com/@evanbackeng/%EC%BA%90%EC%8B%9C%EB%A5%BC-%EB%B6%99%EC%9D%B4%EA%B8%B0-%EC%A0%84%EC%97%90-%EB%AC%BC%EC%97%88%EC%96%B4%EC%95%BC-%ED%95%A0-%EC%84%B8-%EA%B0%80%EC%A7%80-%EC%A7%88%EB%AC%B8-4f50548001b0?sharedUserId=evanbackeng)에 대해 정리했다. 그 기준으로 그룹 트리 조회 API에 Redis 캐시를 붙였고, 응답 시간을 376ms에서 101ms로 줄였다.
+이전 글에서 [캐시를 붙이기 전에 고려해야할 3가지 질문](/posts/three-questions-before-caching)에 대해 정리했다. 그 기준으로 그룹 트리 조회 API에 Redis 캐시를 붙였고, 응답 시간을 376ms에서 101ms로 줄였다.
 
 캐시를 도입하고 나니 이를 안정적이게 운용하려면 고려해야할 것이 또 있었다. 캐시는 근본적으로 데이터 저장을 이원화 하는 것이다. 따라서 아래 두가지를 반드시 고려해야 했다.
 
