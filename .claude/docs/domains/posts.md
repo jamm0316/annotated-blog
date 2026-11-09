@@ -77,6 +77,7 @@
 ### 라우트
 
 - `/posts/[slug]` — `generateStaticParams` 는 `getPosts()` 의 slug, `dynamicParams = false`(목록 밖 slug 는 404). `generateMetadata` 는 `title`, `description`, `openGraph: { type: 'article', title, description, publishedTime: date }`. 비공개·없는 글은 `notFound()`.
+- `/posts/[slug]/opengraph-image` — 글 링크 미리보기 카드(shell 의 `renderOg`). `[topic]`·제목·`날짜 · N분`·배지(있을 때만). `generateStaticParams` 로 빌드 때 글마다 만든다.
 - 레이아웃: `.post-shell` 안에 `aside.post-shell__toc > Toc` 와 `PostArticle`, 그 아래 이웃이 있으면 `NextNav`.
 
 ### export

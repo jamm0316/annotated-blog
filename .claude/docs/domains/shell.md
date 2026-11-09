@@ -7,6 +7,9 @@
 - `src/app/layout.tsx` — 루트 레이아웃. 글꼴 세 벌, `metadata`, 깜빡임 막는 테마 스크립트, 머리말(`HashLink`·`SearchPalette`·`ThemeToggle`·`ModeMenu`), 바닥글(가운데 `VisitCounter`, stats 도메인), `Droplets`, Vercel `Analytics`
 - `src/components/ThemeToggle.tsx` — `toggleTheme()`(빗방울 전환)과 머리말 테마 버튼
 - `src/components/ModeMenu.tsx` — 머리말 오른쪽 끝 모드 메뉴와 첫 방문 안내 말풍선
+- `src/lib/site.ts` — 사이트 절대 주소(`SITE_URL`)·이름·설명, `postUrl(slug)`
+- `src/app/sitemap.ts`·`src/app/robots.ts`·`src/app/feed.xml/route.ts` — 검색엔진·RSS 리더용 파일(빌드 때 정적으로 만든다)
+- `src/lib/og.tsx`·`src/app/opengraph-image.tsx` — 링크 미리보기 카드(1200×630). 글별 카드는 `src/app/posts/[slug]/opengraph-image.tsx`(posts)
 - `src/app/globals.css` — 디자인 토큰과 사이트 전체 스타일(약 3000줄). 섹션별 소유 도메인은 아래 표
 
 ## 1. 컨텍스트 내부
@@ -96,13 +99,19 @@
 - **깜빡임 막는 인라인 스크립트**: `<head>` 의 `themeScript` 가 첫 화면을 그리기 전에 `localStorage['theme'] === 'light'` 면 `data-theme` 를 단다. 서버 HTML 과 달라지므로 `<html suppressHydrationWarning>`.
 - **View Transition + `@property`**: 방울마다 반지름이 따로 움직여야 해서 방울 수만큼 `@property --rain-n` 과 `@keyframes rain-n` 을 둔다. 새 화면 스냅샷에 radial-gradient mask 18장을 겹친다.
 - **테마 버튼을 모드 메뉴로 옮기는 방식**: 같은 `toggleTheme` 을 export 해 두 곳에서 부르고, 어느 쪽을 보일지는 CSS 미디어 쿼리가 정한다.
-- **토큰만 쓴다**: 값을 직접 쓰지 않고 변수를 쓴다. 강조색을 새로 만들지 않는다.
+- **토큰만 쓴다**: 값을 직접 쓰지 않고 변수를 쓴다. 강조색을 새로 만들지 않는다. 예외는 OG 카드(`og.tsx` 의 `C`)뿐이다: `ImageResponse` 는 CSS 변수를 못 읽어 다크 토큰과 같은 값을 적어 둔다.
+- **사이트 주소는 운영 주소 하나**: `SITE_URL` 은 Vercel 이 넣는 `VERCEL_PROJECT_PRODUCTION_URL`(없으면 `evan-log.vercel.app`)이다. 미리보기 배포에서도 sitemap·RSS·OG 주소는 운영을 가리킨다.
+- **OG 카드 한글 글꼴**: `ImageResponse` 기본 글꼴에는 한글이 없다. 빌드 때 Google Fonts 에서 카드에 쓰는 글자만(`text=` 부분 집합) TTF 로 받는다: 제목 Noto Serif KR 700, 라벨 IBM Plex Mono 500 + IBM Plex Sans KR 500. 받지 못하면 `evan.log` 만 그린 카드로 물러나 빌드는 멈추지 않는다. 제목은 `wordBreak: keep-all`(단어 중간에서 끊지 않는다), 글자 수 24·40 을 넘으면 72→62→52px 로 줄인다.
 
 ## 2. 외부 노출 (Published Language)
 
 ### 라우트·메타데이터
 
-- 루트 레이아웃(`LayoutProps<'/'>`). `metadata.title`: `{ default: 'evan.log', template: '%s · evan.log' }`, `description`: `백엔드 개발자 Evan 의 기술 노트와 독후감`.
+- 루트 레이아웃(`LayoutProps<'/'>`). `metadata`: `metadataBase = SITE_URL`, `title`: `{ default: 'evan.log', template: '%s · evan.log' }`, `description`: `백엔드 개발자 Evan 의 기술 노트와 독후감`, `alternates.types['application/rss+xml']` = `/feed.xml`, `openGraph: { siteName, locale: 'ko_KR' }`, `twitter.card = 'summary_large_image'`. 바닥글 링크는 GitHub·Medium·RSS.
+- `/sitemap.xml` — `/`, `/museum`(둘 다 lastModified = 가장 최근 글 날짜)과 공개 글 `/posts/<slug>`(lastModified = 글 date).
+- `/robots.txt` — 모두 허용, `/api/` 만 막음, sitemap 주소 안내.
+- `/feed.xml` — RSS 2.0(`force-static`). 공개 글 전체 최신순. item: title, link·guid(글 절대 주소), pubDate(date 를 한국 시각 0시로), description(`summary`, 없으면 `description`), category(분류 이름·topic·tags). 글을 더하면 다음 배포에 반영된다.
+- `/opengraph-image` — 첫 화면 카드: 사이트 설명 + `$ ls posts | wc -l → <공개 글 수>`.
 - `<html lang="ko" data-scroll-behavior="smooth">`.
 
 ### export

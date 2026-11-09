@@ -12,6 +12,7 @@ import { SearchPalette } from '@/components/SearchPalette';
 import { VisitCounter } from '@/components/VisitCounter';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { getSearchItems } from '@/lib/search';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 // 본문·제목은 읽기 편한 명조(Noto Serif KR), 날짜·라벨·수치·코드는 고정폭(IBM Plex Mono).
@@ -38,8 +39,14 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'evan.log', template: '%s · evan.log' },
-  description: '백엔드 개발자 Evan 의 기술 노트와 독후감',
+  // OG 이미지·canonical 같은 상대 주소를 운영 절대 주소로 바꾼다
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  // RSS 리더가 첫 화면 주소만 받아도 /feed.xml 을 찾게 한다
+  alternates: { types: { 'application/rss+xml': [{ url: '/feed.xml', title: SITE_NAME }] } },
+  openGraph: { siteName: SITE_NAME, locale: 'ko_KR' },
+  twitter: { card: 'summary_large_image' },
 };
 
 // 첫 화면이 그려지기 전에 저장된 테마를 적용해 깜빡임을 막는다. 기본은 다크(검정).
@@ -88,6 +95,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             <span className="site-footer__links">
               <a href="https://github.com/jamm0316">GitHub</a>
               <a href="https://medium.com/@evanbackeng">Medium</a>
+              <a href="/feed.xml">RSS</a>
             </span>
           </div>
         </footer>
