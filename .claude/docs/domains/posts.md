@@ -12,6 +12,7 @@
 - `src/components/Toc.tsx` — 목차와 지금 읽는 소제목 표시
 - `src/components/NextNav.tsx` — 바닥에서 올라오는 이어서 읽기 카드
 - `src/components/EndMark.tsx` — 본문 끝 `EOF` 표시
+- `src/components/ShareButton.tsx` — 글 머리 메타 줄 오른쪽 끝 '공유' 버튼
 - `src/app/posts/[slug]/page.tsx` — 글 페이지 라우트
 - 참고: `next.config.ts` 의 MDX 설정, `content/posts/*/index.mdx`, AGENTS.md '글 추가'
 
@@ -63,6 +64,7 @@
 - **날짜 표기**: `formatDate` 는 `-` 를 `.` 으로 바꾼다(`2026-11-06` → `2026.11.06`).
 - **목차**: `[data-prose]` 안의 `h2[id]`·`h3[id]` 를 모은다(id 는 `rehype-slug`). 화면 높이 30% 선을 지난 마지막 소제목이 지금 읽는 소제목이고, 그 본문 소제목에 `data-current` 를 단다. 왼쪽 선은 본문을 읽은 비율만큼 `scaleY` 로 찬다.
 - **이어서 읽기 카드 등장**: `scrollY + innerHeight >= scrollHeight - 24` 이면 `data-state="in"` 이고 `<html>` 에 `data-reading-done` 을 단다(globals.css 가 본문·목차를 흐린다).
+- **공유 버튼**: 글 머리 메타 줄(날짜 · 읽는 시간 · 조회 · 연재) 오른쪽 끝(`margin-left: auto`). 공유하는 주소는 서버에서 만든 `postUrl(slug)`(운영 절대 주소)이고, 주소창 값을 쓰지 않는다(박물관 두루마리의 `?from=museum`·미리보기 도메인이 새지 않게). 터치 화면(`pointer: coarse`)에 `navigator.share` 가 있으면 공유 시트를 띄우고, 시트를 닫은 것(`AbortError`)은 아무것도 하지 않는다. 그 밖에는 클립보드에 복사하고 2초 동안 '링크 복사됨'(실패하면 '복사 실패')을 보인다.
 - **EOF**: `IntersectionObserver`(`rootMargin: '0px 0px -20% 0px'`)로 한 번 들어오면 `is-drawn` 을 달고 관찰을 끊는다.
 
 ### 핵심 설계 결정

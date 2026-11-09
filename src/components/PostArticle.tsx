@@ -4,7 +4,9 @@
 import { EndMark } from '@/components/EndMark';
 import { ViewBeacon } from '@/components/ViewBeacon';
 import { ViewCount } from '@/components/ViewCount';
+import { ShareButton } from '@/components/ShareButton';
 import { formatDate, type PostMeta } from '@/lib/posts';
+import { postUrl } from '@/lib/site';
 
 // 글 본문(머리·MDX·EOF). 글 페이지와 박물관의 읽기 창이 함께 쓴다.
 export async function PostArticle({ post }: { post: PostMeta }) {
@@ -33,6 +35,7 @@ export async function PostArticle({ post }: { post: PostMeta }) {
               <span>{post.series}</span>
             </>
           )}
+          <ShareButton url={postUrl(post.slug)} title={post.title} />
         </div>
       </header>
       {/* @MX:WARN: data-prose 는 Toc 가 본문을 찾는 표식이다 */}

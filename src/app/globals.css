@@ -1180,6 +1180,30 @@ button:active:not(:disabled) {
   color: var(--ink-70);
 }
 
+/* 메타 줄 오른쪽 끝으로 민다. 줄이 넘치면 다음 줄 오른쪽 끝에 놓인다 */
+.share-button {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-thickness var(--dur-instant) ease-out;
+}
+
+.share-button:hover {
+  text-decoration-thickness: 2px;
+}
+
+.share-button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* 본문 끝: 점이 가로선으로 늘어나며 EOF 를 끝까지 밀고 간다 */
 .end-mark {
   display: flex;
