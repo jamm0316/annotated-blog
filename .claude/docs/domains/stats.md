@@ -47,6 +47,7 @@
 ### 설계 결정
 
 - **순위는 페이지를 한 시간마다 다시 만들 때(ISR, `revalidate = 3600`) 서버에서 읽는다.** 첫 화면(`app/page.tsx`)과 박물관(`app/museum/page.tsx`)이 같은 주기다. 방문자는 표식이 이미 붙은 HTML 을 받아 화면이 흔들리지 않고, 방문마다 DB 를 읽지 않는다.
+- **빌드 중에는 DB 에 붙지 않는다.** `NEXT_PHASE === 'phase-production-build'` 이면 `getPostStats()` 가 빈 값을 돌려준다. 빌드에서 `/`·`/museum` 이 DB 응답을 기다리다 60초 제한을 세 번 넘겨 운영 배포가 실패했다. 표식은 배포 뒤 첫 revalidate(최대 1시간) 때 붙는다. 요청 때도 DB 응답이 4초(`STATS_TIMEOUT_MS`)를 넘으면 빈 값으로 그린다.
 - **DB 가 없거나 실패하면 통계 없이 그린다.** `POSTGRES_URL` 이 없으면(로컬·CI 빌드) `db()` 가 null, `getPostStats()` 는 빈 값(`{ views: {}, ranks: {} }`)을 돌려준다. API 는 `/api/visit` 503, `/api/view` 204.
 - **화면의 숫자는 모두 DB 에 쌓인 실제 값이다.** 받기 전이나 실패하면 `VisitCounter` 는 아무것도 그리지 않는다(지어낸 0 을 보이지 않는다). 연동한 날(2026-11-07)부터 센다. Vercel Analytics 의 지난 기록은 옮겨 오지 않았다.
 - **조회수 숫자는 목록에 보이지 않는다.** 첫 화면은 표식만, 숫자는 박물관 설명판에서만(`VIEWS_SHOW = 10` 명 이상일 때) 보인다. 초반의 작은 숫자가 진열대·목록에 박히지 않게 하려는 것이다.

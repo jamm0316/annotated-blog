@@ -25,10 +25,31 @@ export const RANK_RULES = {
 
 const EMPTY: PostStats = { views: {}, ranks: {} };
 
-// DB 가 없거나(로컬 빌드) 실패하면 표식 없이 그린다. 통계 때문에 페이지가 깨지면 안 된다
+/** DB 응답을 기다리는 최대 시간. 넘으면 표식 없이 그린다 */
+const STATS_TIMEOUT_MS = 4_000;
+
+// DB 가 없거나(로컬 빌드) 실패하거나 늦으면 표식 없이 그린다. 통계 때문에 페이지가 깨지거나 멈추면 안 된다.
+// @MX:WARN: 빌드 중(next build)에는 DB 에 붙지 않는다. 첫 화면·박물관은 빈 표식으로 만들고 revalidate(1시간) 때 채운다
+// @MX:REASON: 빌드에서 / 와 /museum 이 DB 응답을 기다리다 60초 제한을 세 번 넘겨 운영 배포가 두 번 실패했다(실제 겪은 버그)
 export async function getPostStats(): Promise<PostStats> {
+  if (process.env.NEXT_PHASE === 'phase-production-build') return EMPTY;
   const sql = db();
   if (!sql) return EMPTY;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<PostStats>((resolve) => {
+    timer = setTimeout(() => {
+      console.error('[stats] DB 응답이 늦어 표식 없이 그린다');
+      resolve(EMPTY);
+    }, STATS_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([readStats(sql), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readStats(sql: NonNullable<ReturnType<typeof db>>): Promise<PostStats> {
   try {
     await ensureSchema(sql);
     const since = kstDay(-(RANK_RULES.HOT_DAYS - 1));

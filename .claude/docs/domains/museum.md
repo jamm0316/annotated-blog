@@ -60,7 +60,7 @@
   - HOT: 뚜껑 둘레에 스스로 빛나는 테(`MeshBasicMaterial`, `C.hot`, 토러스 반지름 0.36).
   - BEST: 카메라 쪽 몸통에 금 메달(`C.gold` 원판 + 크림 가운데)과 리본 꼬리 두 갈래(`C.ribbon`).
   - 책장(독후감)은 몸통이 없어 꼭대기 앞쪽에 메달 하나(HOT 빨강, BEST 금).
-- 빛은 들어온 시각으로 한 번 정한다: 19시~6시 전 `night`(유리 돔 발광·받침 아래 불빛 웅덩이·리셉션 램프), 6~9시 전·17시~ `dusk`, 그 밖 `day`.
+- 빛은 들어온 시각으로 한 번 정한다: 19시~6시 전 `night`(유리 돔 발광·받침 아래 불빛 웅덩이·리셉션 램프), 6~9시 전 `dawn`(동쪽 낮은 햇살), 17시~ `dusk`(서쪽 노을), 그 밖 `day`.
 
 ### 관 이름과 관 이름 표시
 
@@ -106,6 +106,7 @@
 - **engine 은 React 밖**: three.js 장면과 겹친 UI(말풍선·수첩·영수증)를 DOM 으로 직접 만든다. Museum.tsx 는 `import('./engine')` 로 이 페이지에서만 three.js 를 불러오고, 언마운트 때 반환 함수로 모두 정리한다.
 - **색 규칙 예외**: 이 모드만 사이트의 세 가지 색 규칙에서 빠진다. 색은 `engine.ts` 의 `C` 와 `--m-*` 토큰에만 둔다.
 - **반복 애니메이션 금지 유지**: 팔다리는 걷는 동안만, 돔·연재 길·관 이름 표시는 한 번만 움직이고 멈춘다. `prefers-reduced-motion` 이면 tween 은 바로 끝 상태로 간다.
+- **낙관적 라우팅을 끈다(`next.config.ts` `experimental.optimisticRouting: false`)**: Next 16.4 기본값은 켜짐이다. 첫 화면이 받은 `/posts/<slug>` 하나로 '`/posts/[slug]` 는 가로채기 없음'을 외운 뒤, 박물관에서 연 다른 글도 서버에 묻지 않고 글 페이지 구조로 그렸다(`?from=museum` 을 붙여도 두루마리 대신 글 페이지로 넘어가던 버그). Vary 에 `Next-Url` 이 없어 이 패턴에 `couldBeIntercepted` 도 붙지 않는다.
 - **가로채기 라우트에 `dynamicParams = false` 를 두지 않는다**: 이 라우트가 한 번 컴파일된 뒤 더한 글은 `generateStaticParams` 의 캐시된 목록에 없어 가로채기가 404 가 되고, Next 는 가로채기를 포기하고 글 페이지로 바로 넘어갔다(새 글만 두루마리 대신 글 페이지로 열리던 버그). 없는 글은 `getPost` → `notFound()` 로 막는다. (글 페이지 `src/app/posts/[slug]/page.tsx` 는 `dynamicParams = false` 를 쓴다. 둘을 맞추지 않는다.)
 - **`/posts/<slug>?from=museum` 으로 연다**: Vercel 의 prerender RSC 응답은 `Vary` 에 `Next-Url` 이 없다. 첫 화면 목록이 prefetch 한 `/posts/<slug>` 캐시를 클라이언트가 '가로채질 일 없는 주소'로 저장해 박물관에서도 재사용했고, 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만). 쿼리가 다르면 캐시를 새로 찾으므로 `Next-Url: /museum` 으로 요청해 `@reader` 가로채기를 받는다.
 - **두루마리는 history 한 칸**: 닫기·Esc·바깥 누르기·뒤로 가기 모두 `router.back()`. 박물관 장면은 언마운트되지 않아 서 있던 자리가 남는다. 새로고침·공유한 주소는 원래 글 페이지를 연다. '전체 페이지'는 일반 `<a>` 라 가로채지 않는다.
