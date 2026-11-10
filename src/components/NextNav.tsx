@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 type Item = { slug: string; title: string; description: string; date: string; reason: string };
 
 // 다 읽고 이어서 볼 글. 페이지 바닥까지 내리면 위의 본문이 흐려지고 카드가 아래에서 올라온다.
-// 다시 위로 올리면 본문이 돌아온다.
+// 다시 위로 올리면 본문이 돌아온다. 목차로 건너뛰어 바닥에 닿았을 때는 한 번 더 내려야 흐려진다.
 export function NextNav({ items }: { items: Item[] }) {
   const ref = useRef<HTMLElement>(null);
   const [state, setState] = useState<'static' | 'waiting' | 'in'>('static');
@@ -17,18 +17,42 @@ export function NextNav({ items }: { items: Item[] }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const root = document.documentElement;
+    // 목차·# 링크로 건너뛰어 바닥에 닿은 것은 '다 읽음'이 아니다. 독자가 직접 한 번 더 내릴 때까지 흐리지 않는다
+    let jumped = location.hash !== '';
     const onScroll = () => {
-      const root = document.documentElement;
       const shown = window.scrollY + window.innerHeight >= root.scrollHeight - 24;
       setState(shown ? 'in' : 'waiting');
       // @MX:NOTE: globals.css 의 :root[data-reading-done] 가 목차·머리·본문을 흐린다. 언마운트 때 지운다
-      document.documentElement.toggleAttribute('data-reading-done', shown);
+      root.toggleAttribute('data-reading-done', shown && !jumped);
+    };
+    const onJump = (e: Event) => {
+      if (e.type === 'click' && !(e.target as Element).closest?.('a[href^="#"]')) return;
+      jumped = true;
+      root.removeAttribute('data-reading-done');
+    };
+    // 바닥에서는 더 내려도 scroll 이벤트가 없으므로 휠·터치·키 입력을 직접 본다
+    // 아래로 내리는 입력만 본다. 위로 올리는 휠·다른 키까지 보면 올라가기 전에 잠깐 흐려진다
+    const DOWN_KEYS = ['ArrowDown', 'PageDown', 'End', ' '];
+    const onUserScroll = (e: Event) => {
+      if (!jumped) return;
+      if (e instanceof WheelEvent && e.deltaY <= 0) return;
+      if (e instanceof KeyboardEvent && !DOWN_KEYS.includes(e.key)) return;
+      jumped = false;
+      onScroll();
     };
     onScroll();
+    const user = ['wheel', 'touchmove', 'keydown'] as const;
     window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('click', onJump, true);
+    window.addEventListener('hashchange', onJump);
+    user.forEach((t) => window.addEventListener(t, onUserScroll, { passive: true }));
     return () => {
       window.removeEventListener('scroll', onScroll);
-      document.documentElement.removeAttribute('data-reading-done');
+      document.removeEventListener('click', onJump, true);
+      window.removeEventListener('hashchange', onJump);
+      user.forEach((t) => window.removeEventListener(t, onUserScroll));
+      root.removeAttribute('data-reading-done');
     };
   }, []);
 

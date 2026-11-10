@@ -63,7 +63,7 @@
   이미 고른 글과 자기 자신은 빠진다.
 - **날짜 표기**: `formatDate` 는 `-` 를 `.` 으로 바꾼다(`2026-11-06` → `2026.11.06`).
 - **목차**: `[data-prose]` 안의 `h2[id]`·`h3[id]` 를 모은다(id 는 `rehype-slug`). 화면 높이 30% 선을 지난 마지막 소제목이 지금 읽는 소제목이고, 그 본문 소제목에 `data-current` 를 단다. 왼쪽 선은 본문을 읽은 비율만큼 `scaleY` 로 찬다.
-- **이어서 읽기 카드 등장**: `scrollY + innerHeight >= scrollHeight - 24` 이면 `data-state="in"` 이고 `<html>` 에 `data-reading-done` 을 단다(globals.css 가 본문·목차를 흐린다).
+- **이어서 읽기 카드 등장**: `scrollY + innerHeight >= scrollHeight - 24` 이면 `data-state="in"` 이고 `<html>` 에 `data-reading-done` 을 단다(globals.css 가 본문·목차를 흐린다). 단, 목차·`#` 링크 클릭이나 `#` 이 붙은 주소로 바닥에 닿았으면 흐리지 않고, 독자가 휠·터치·키로 직접 스크롤해야 흐린다(바닥에서는 scroll 이벤트가 없어 이 입력을 직접 본다). 짧은 마지막 절로 건너뛰면 바닥에 닿아 읽으려던 글이 흐려지던 문제를 막는다.
 - **공유 버튼**: 글 머리 메타 줄(날짜 · 읽는 시간 · 조회 · 연재) 오른쪽 끝(`margin-left: auto`). 공유하는 주소는 서버에서 만든 `postUrl(slug)`(운영 절대 주소)이고, 주소창 값을 쓰지 않는다(박물관 두루마리의 `?from=museum`·미리보기 도메인이 새지 않게). 터치 화면(`pointer: coarse`)에 `navigator.share` 가 있으면 공유 시트를 띄우고, 시트를 닫은 것(`AbortError`)은 아무것도 하지 않는다. 그 밖에는 클립보드에 복사하고 2초 동안 '링크 복사됨'(실패하면 '복사 실패')을 보인다.
 - **EOF**: `IntersectionObserver`(`rootMargin: '0px 0px -20% 0px'`)로 한 번 들어오면 `is-drawn` 을 달고 관찰을 끊는다.
 
