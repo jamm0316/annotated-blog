@@ -11,12 +11,19 @@ const nextConfig: NextConfig = {
     '/api/ask': ['./content/posts/**/*.mdx'],
     '/api/view': ['./content/posts/**/*.mdx'],
   },
-  experimental: {
-    // @MX:WARN: 켜 두면 박물관 '글 읽기'가 두루마리 대신 글 페이지로 넘어간다(실제 겪은 버그)
-    // @MX:REASON: 낙관적 라우팅은 첫 화면이 미리 받은 /posts/<slug> 로 '/posts/[slug] 는 가로채기 없음'을 외워
-    // 박물관에서 연 다른 글도 서버에 묻지 않고 글 페이지 구조로 그린다. Vercel 의 미리 만든 응답 Vary 에 Next-Url 이
-    // 없어 이 패턴이 가로챌 수 있는 주소라는 것도 알 수 없다. ?from=museum 은 같은 주소 캐시만 피하고 이 추측은 못 막는다.
-    optimisticRouting: false,
+  // 박물관 두루마리 주소(/museum/read/<slug>)는 박물관 안 소프트 이동에서만 쓴다.
+  // 새로고침하거나 공유한 주소로 바로 열면(문서 요청) 원래 글 페이지로 보낸다.
+  // @MX:WARN: missing 의 rsc 조건을 빼지 않는다
+  // @MX:REASON: 박물관 안의 이동(RSC 요청, 헤더 `rsc: 1`)까지 글 페이지로 돌려보내 두루마리가 뜨지 않는다
+  async redirects() {
+    return [
+      {
+        source: '/museum/read/:slug',
+        missing: [{ type: 'header', key: 'rsc' }],
+        destination: '/posts/:slug',
+        permanent: false,
+      },
+    ];
   },
 };
 

@@ -9,7 +9,7 @@ type State = 'idle' | 'copied' | 'failed';
 /** '복사됨'·'복사 실패' 를 보여 주는 시간 */
 const FEEDBACK_MS = 2_000;
 
-// url 은 서버에서 만든 운영 절대 주소를 받는다. 지금 주소창을 쓰면 박물관 두루마리의 ?from=museum 이나 미리보기 도메인이 공유된다
+// url 은 서버에서 만든 운영 절대 주소를 받는다. 지금 주소창을 쓰면 박물관 두루마리 주소(/museum/read/<slug>)나 미리보기 도메인이 공유된다
 export function ShareButton({ url, title }: { url: string; title: string }) {
   const [state, setState] = useState<State>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

@@ -5,6 +5,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import type { Exhibit } from '@/lib/museum';
+import { readerHref } from './Reader';
 
 // 박물관 모드. 장면은 engine.ts 가 그리고, 여기서는 붙였다 뗄 자리와 AI 검색·이동만 넘긴다.
 // three.js 는 이 페이지에서만 불러온다.
@@ -41,13 +42,10 @@ export function Museum({ exhibits, realtime }: { exhibits: Exhibit[]; realtime: 
         },
         open: (ex) => {
           if (ex.external) window.open(ex.href, '_blank', 'noopener,noreferrer');
-          // @MX:WARN: ?from=museum 을 빼면 첫 화면이 prefetch 한 글 캐시를 재사용해 두루마리 대신 글 페이지로 넘어간다
-          // @MX:REASON: Vercel 의 prerender RSC 응답 Vary 에 Next-Url 이 없어 가로채기 없는 캐시가 박물관에서도 쓰였다(실제 겪은 버그)
-          // 첫 화면 목록이 미리 받아 둔 /posts/<slug> 를 피하려고 박물관 전용 쿼리를 붙인다.
-          // Vercel 의 미리 만든 글 응답은 Vary 에 Next-Url 이 없어, 클라이언트가 그 캐시를 '가로채질 일 없는 주소'로
-          // 저장했다가 박물관에서도 그대로 써서 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만 그랬다).
-          // 쿼리가 다르면 캐시를 새로 찾으므로 Next-Url: /museum 으로 요청해 가로채기(@reader)를 받는다.
-          else router.push(`${ex.href}?from=museum`);
+          // @MX:WARN: 두루마리는 글 주소(ex.href = /posts/<slug>)가 아니라 박물관 전용 주소(readerHref)로 연다
+          // @MX:REASON: 글 주소로 열면 첫 화면이 미리 받아 둔 '글 페이지' 캐시가 그대로 쓰여 두루마리 대신 글 페이지로 넘어간다
+          // (실제 겪은 버그. 까닭은 app/museum/@reader/read/[slug]/page.tsx 머리 주석)
+          else router.push(readerHref(ex.id));
         },
       });
     });

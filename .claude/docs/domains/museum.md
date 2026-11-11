@@ -1,6 +1,6 @@
 # museum
 
-박물관 모드(`/museum`). 글 한 편·연구실 항목 하나가 진열대 하나인 3D 기록관을 three.js 로 그리고, '글 읽기'는 가로채기 라우트로 장면 위 두루마리에 띄우며, 관람 진행(도장·버그)은 이 브라우저의 localStorage 에만 남긴다.
+박물관 모드(`/museum`). 글 한 편·연구실 항목 하나가 진열대 하나인 3D 기록관을 three.js 로 그리고, '글 읽기'는 박물관 전용 주소(`/museum/read/<slug>`)의 `@reader` 슬롯으로 장면 위 두루마리에 띄우며, 관람 진행(도장·버그)은 이 브라우저의 localStorage 에만 남긴다.
 
 ## 코드 위치
 
@@ -15,7 +15,8 @@
 | `src/app/museum/layout.tsx` | `children` 위에 `@reader` 슬롯을 겹친다 |
 | `src/app/museum/page.tsx` | `/museum` 페이지. 메타데이터, `withStats(getExhibits(), await getPostStats())` 를 `<Museum exhibits>` 에, 공개 Supabase 주소·키(`realtimeConfig()`)를 `realtime` 에 넘김, 키 안내 줄. `revalidate = 3600`(조회수 표식을 한 시간마다 다시 얹는다) |
 | `src/app/museum/@reader/page.tsx`, `default.tsx` | 읽기 창이 없을 때 `null` |
-| `src/app/museum/@reader/(..)posts/[slug]/page.tsx` | `/posts/<slug>` 가로채기. `Reader` 안에 `PostArticle` |
+| `src/app/museum/@reader/read/[slug]/page.tsx` | 두루마리 라우트 `/museum/read/<slug>`. `Reader` 안에 `PostArticle`. `robots: noindex`, canonical 은 글 주소 |
+| `src/app/museum/default.tsx` | `/museum/read/<slug>` 를 주소로 바로 열었을 때 children 자리의 박물관 장면(안전망, `page.tsx` 를 다시 내보낸다) |
 
 스타일은 `src/app/globals.css` 의 `.museum*`(`.museum-page`, `.museum__talk` 등)·`.reader`·`.scroll*` 클래스와 `.museum-page` 에 정의한 `--m-*` 토큰(shell 도메인 파일)에 있다. 같은 구역 뒤쪽의 `.mode__icon`·`.mode__theme` 와 460px 규칙은 모드 메뉴(shell 도메인)의 것이다.
 
@@ -106,11 +107,12 @@
 - **engine 은 React 밖**: three.js 장면과 겹친 UI(말풍선·수첩·영수증)를 DOM 으로 직접 만든다. Museum.tsx 는 `import('./engine')` 로 이 페이지에서만 three.js 를 불러오고, 언마운트 때 반환 함수로 모두 정리한다.
 - **색 규칙 예외**: 이 모드만 사이트의 세 가지 색 규칙에서 빠진다. 색은 `engine.ts` 의 `C` 와 `--m-*` 토큰에만 둔다.
 - **반복 애니메이션 금지 유지**: 팔다리는 걷는 동안만, 돔·연재 길·관 이름 표시는 한 번만 움직이고 멈춘다. `prefers-reduced-motion` 이면 tween 은 바로 끝 상태로 간다.
-- **낙관적 라우팅을 끈다(`next.config.ts` `experimental.optimisticRouting: false`)**: Next 16.4 기본값은 켜짐이다. 첫 화면이 받은 `/posts/<slug>` 하나로 '`/posts/[slug]` 는 가로채기 없음'을 외운 뒤, 박물관에서 연 다른 글도 서버에 묻지 않고 글 페이지 구조로 그렸다(`?from=museum` 을 붙여도 두루마리 대신 글 페이지로 넘어가던 버그). Vary 에 `Next-Url` 이 없어 이 패턴에 `couldBeIntercepted` 도 붙지 않는다.
-- **가로채기 라우트에 `dynamicParams = false` 를 두지 않는다**: 이 라우트가 한 번 컴파일된 뒤 더한 글은 `generateStaticParams` 의 캐시된 목록에 없어 가로채기가 404 가 되고, Next 는 가로채기를 포기하고 글 페이지로 바로 넘어갔다(새 글만 두루마리 대신 글 페이지로 열리던 버그). 없는 글은 `getPost` → `notFound()` 로 막는다. (글 페이지 `src/app/posts/[slug]/page.tsx` 는 `dynamicParams = false` 를 쓴다. 둘을 맞추지 않는다.)
-- **`/posts/<slug>?from=museum` 으로 연다**: Vercel 의 prerender RSC 응답은 `Vary` 에 `Next-Url` 이 없다. 첫 화면 목록이 prefetch 한 `/posts/<slug>` 캐시를 클라이언트가 '가로채질 일 없는 주소'로 저장해 박물관에서도 재사용했고, 두루마리 대신 글 페이지로 넘어갔다(첫 화면에 보이던 최신 글들만). 쿼리가 다르면 캐시를 새로 찾으므로 `Next-Url: /museum` 으로 요청해 `@reader` 가로채기를 받는다.
-- **두루마리는 history 한 칸**: 닫기·Esc·바깥 누르기·뒤로 가기 모두 `router.back()`. 박물관 장면은 언마운트되지 않아 서 있던 자리가 남는다. 새로고침·공유한 주소는 원래 글 페이지를 연다. '전체 페이지'는 일반 `<a>` 라 가로채지 않는다.
-- **두루마리 안의 다른 글 링크는 그 글의 두루마리로**: `Reader` 의 `onClickCapture`(`openLinkedPost`)가 종이(`.scroll__paper`) 안 `/posts/<slug>` 링크 클릭을 막고 `router.replace('/posts/<slug>?from=museum')` 한다. replace 라 history 는 한 칸 그대로이고, 말면 박물관으로 돌아온다. 수정 키 클릭·새 탭·밖으로 가는 링크는 그대로 둔다.
+- **두루마리는 글 페이지와 다른 주소를 쓴다(`/museum/read/<slug>`, `readerHref`)**: 예전에는 가로채기 라우트(`@reader/(..)posts/[slug]`)로 `/posts/<slug>` 한 주소가 화면 둘(글 페이지·두루마리)을 가리켰다. 그런데 첫 화면은 보이는 행의 `/posts/<slug>` 를 미리 받고(`Next-Url: /`, 글 페이지 구조), Next 클라이언트 캐시는 이 주소를 '가로채질 일 없는 주소'로 저장한다(Vercel 의 미리 만든 응답 `Vary` 에 `Next-Url` 이 없다). 그 뒤 박물관에서 같은 글을 열면 **서버에 묻지 않고** 캐시의 글 페이지 구조로 그려 두루마리 대신 글 페이지로 넘어갔다. 첫 화면에 보이는 글 = 최신 글 = 기술 노트관 맨 윗줄이라 늘 그 진열대들에서 났다. `?from=museum` 쿼리, `optimisticRouting: false` 로 막아 봤지만 Next 의 캐시 키가 바뀔 때마다 다시 났다(2026-11-11 운영에서 재현: 첫 화면이 미리 받은 7편은 요청 없이 글 페이지, 나머지 13편은 두루마리). 주소를 나누면 어떤 캐시도 둘을 헷갈릴 수 없다. **가로채기 라우트로 되돌리지 않는다.**
+- **주소로 바로 열면 글 페이지로**: `next.config.ts` 의 `redirects` 가 `/museum/read/:slug` 문서 요청(`rsc` 헤더 없음)을 `/posts/:slug` 로 307 보낸다. 박물관 안의 소프트 이동(RSC 요청, `rsc: 1`)은 그대로 둔다. `missing` 조건을 빼면 두루마리가 뜨지 않는다. 이 규칙이 빠져도 `app/museum/default.tsx` 가 박물관 장면을 그려 두루마리가 뜬다.
+- **두루마리 라우트에 `dynamicParams = false` 를 두지 않는다**: 이 라우트가 한 번 컴파일된 뒤 더한 글은 `generateStaticParams` 의 캐시된 목록에 없어 404 가 됐다(새 글만 두루마리가 안 뜨던 버그). 없는 글은 `getPost` → `notFound()` 로 막는다. (글 페이지 `src/app/posts/[slug]/page.tsx` 는 `dynamicParams = false` 를 쓴다. 둘을 맞추지 않는다.)
+- **두루마리는 history 한 칸**: 닫기·Esc·바깥 누르기·뒤로 가기 모두 `router.back()`. 박물관 장면은 언마운트되지 않아 서 있던 자리가 남는다. 새로고침·공유한 주소는 원래 글 페이지를 연다(위 redirects). '전체 페이지'는 `/posts/<slug>` 로 가는 일반 `<a>` 다.
+- **두루마리 안의 다른 글 링크는 그 글의 두루마리로**: `Reader` 의 `onClickCapture`(`openLinkedPost`)가 종이(`.scroll__paper`) 안 `/posts/<slug>` 링크 클릭을 막고 `router.replace(readerHref(slug) + hash)` 한다. replace 라 history 는 한 칸 그대로이고, 말면 박물관으로 돌아온다. 수정 키 클릭·새 탭·밖으로 가는 링크는 그대로 둔다.
+- **길 따라 걷기는 한 걸음을 남은 거리로 자른다**: 경유점 도착 판정은 0.08 인데 한 걸음은 `3.6 × dt`(dt 최대 0.05)라, 프레임이 느리면(약 20fps 아래) 경유점을 지나쳤다 되돌아오며 제자리에서 맴돌았다(부엉이 안내로 먼 진열대에 못 가던 버그). `Math.min(3.6 * dt, reach)` 로 막는다.
 - **떠날 때 말려 올라가기**: 박물관 밖 같은 출처 링크 클릭을 캡처 단계에서 막고 `data-leaving` 을 단 뒤 620ms 뒤 `router.push`. `dialog` 안 링크, 새 탭, `/museum*`, 수정 키 클릭, 움직임 줄이기는 그대로 둔다. 들어올 때 펼쳐지는 것은 CSS(`museum-unroll`).
 
 ### 실시간 관람객(`presence.ts`, engine 의 `social`)
@@ -129,7 +131,7 @@
 | 경로 | 내용 |
 | --- | --- |
 | `/museum` | `MuseumPage`. metadata `title: '박물관'` |
-| `/posts/<slug>` (`/museum` 에서 소프트 이동) | `@reader/(..)posts/[slug]` 가 가로채 `Reader` 로 띄운다. `generateStaticParams` 는 모든 공개 글, `generateMetadata` 는 글 제목·설명 |
+| `/museum/read/<slug>` | 박물관 안 소프트 이동이면 `@reader/read/[slug]` 가 `Reader` 로 띄운다(장면은 그대로). 문서 요청이면 `/posts/<slug>` 로 307. `generateStaticParams` 는 모든 공개 글, `generateMetadata` 는 글 제목·설명·canonical(글 주소)·`noindex` |
 
 ### export
 
@@ -139,7 +141,7 @@
 - `engine.ts`: `mountMuseum(root: HTMLElement, options: MuseumOptions): () => void`, `type AskPick = { id; reason }`, `type AskReply = { answer; picks: AskPick[] }`, `type MuseumOptions`:
   - `exhibits: Exhibit[]`
   - `ask(question: string): Promise<AskReply>` — 실패하면 사용자에게 보일 문구를 담은 `Error` 를 던진다.
-  - `open(exhibit: Exhibit): void` — 글은 사이트 안(`?from=museum`), 연구실은 새 탭.
+  - `open(exhibit: Exhibit): void` — 글은 사이트 안(`readerHref(ex.id)` = `/museum/read/<slug>`), 연구실은 새 탭.
   - 반환 함수: 타이머·이벤트·ResizeObserver·three.js 자원을 정리하고 `root` 를 비운다.
 - `passport.ts`: `type Passport`, `loadPassport()`, `savePassport(p)`, `stamp(id): boolean`(처음 찍으면 `true`), `STAMP_EVENT`, `READ_EVENT`.
 
@@ -161,19 +163,19 @@
 
 ### 에러 계약
 
-- 가로채기에서 없는 slug 는 `notFound()`.
+- 두루마리 라우트에서 없는 slug 는 `notFound()`.
 - 빌드를 멈추는 조건은 이 도메인에 없다. `short` 10자 초과·`quiz` 모양 오류는 posts 의 검증이 멈춘다.
 
 ## 3. Context Map
 
 | 상대 | 방향 | 방식 |
 | --- | --- | --- |
-| posts | museum → posts | `getPosts()`·`type Quiz`(museum.ts), `getPost`·`getPosts`(가로채기 라우트), `PostArticle` 컴포넌트를 글 페이지와 함께 쓴다. `short`·`quiz`·`series`·`topic` frontmatter 에 기댄다 |
+| posts | museum → posts | `getPosts()`·`type Quiz`(museum.ts), `getPost`·`getPosts`(두루마리 라우트), `PostArticle` 컴포넌트를 글 페이지와 함께 쓴다. `short`·`quiz`·`series`·`topic` frontmatter 에 기댄다 |
 | lab | museum → lab | `LAB` 에서 연구실 진열품을 만든다(`repo`, `short`, `title`, `date`, `url`) |
 | stats | museum → stats | 진열품 `rank`·`views`(page.tsx 의 `withStats`). 같은 Supabase 프로젝트의 Realtime 을 실시간 관람객이 쓴다 |
 | search | museum → search | `/api/ask` 를 HTTP 로 부른다. 진열품 id 는 search 의 id(`slug`, `lab:<repo>`)와 같아야 picks 가 진열대에 맞는다. `SearchPalette` 는 `/museum` 에서 `/` 키를 가로채지 않는다(부엉이가 쓴다) |
 | shell | shell → museum | `ModeMenu` 가 `/museum` 링크와 첫 방문 안내(`evan-log:museum-hint`)를 둔다. `.museum*`·`.reader`·`.scroll*` 스타일과 `--m-*` 토큰은 globals.css 에 있다. 머리말 링크 클릭은 Museum.tsx 의 말려 올라가기가 가로챈다 |
 | playgrounds | 간접 | 두루마리 안 본문은 `PostArticle` 이 그리는 MDX 컴포넌트다. 그림 확대 `dialog` 가 열리면 engine 은 입력을 멈춘다 |
-| browse | 간접 | 첫 화면 목록의 `/posts/<slug>` prefetch 캐시가 `?from=museum` 을 둔 이유다 |
+| browse | 간접 | 첫 화면 목록이 `/posts/<slug>` 를 미리 받는다. 두루마리가 그 주소를 쓰지 않는 이유다 |
 
-최종 갱신: 2026-11-07
+최종 갱신: 2026-11-11

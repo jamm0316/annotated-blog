@@ -9,6 +9,11 @@ import { loadPassport, READ_EVENT, stamp } from './passport';
 // 박물관 위에 펼쳐지는 두루마리. 글 내용만 가져와 위아래 나무 축 사이의 종이에 싣고, 종이를 위에서 아래로 스크롤해 읽는다.
 // 닫기·Esc·바깥 누르기·뒤로 가기 모두 history 를 한 칸 되돌려, 박물관은 서 있던 자리 그대로 남는다.
 // 종이 끝까지 내려가면 관람 수첩에 도장이 찍힌다(passport.ts).
+/** 글 slug 의 두루마리 주소. 글 페이지 주소(/posts/<slug>)와 겹치지 않는 박물관 전용 주소다 */
+// @MX:ANCHOR: 두루마리 주소 형식. app/museum/@reader/read/[slug] 라우트·next.config.ts 의 redirects 와 같아야 한다
+// @MX:REASON: Museum.tsx(진열대 '글 읽기')와 Reader(본문 속 글 링크)가 이 함수로만 두루마리를 연다
+export const readerHref = (slug: string) => `/museum/read/${slug}`;
+
 export function Reader({
   id,
   title,
@@ -49,7 +54,7 @@ export function Reader({
   }, [id]);
 
   // 본문 속 다른 글 링크(/posts/<slug>)는 글 페이지로 넘어가지 않고 그 글의 두루마리로 바꿔 연다.
-  // replace 라 history 는 계속 한 칸이고, 말면 박물관으로 바로 돌아온다. ?from=museum 은 Museum.tsx 의 open 과 같은 까닭이다
+  // replace 라 history 는 계속 한 칸이고, 말면 박물관으로 바로 돌아온다. 주소는 Museum.tsx 의 open 과 같은 readerHref 로 만든다
   // @MX:WARN: 위 막대의 '전체 페이지' 링크(.scroll__tag)는 가로채지 않는다
   // @MX:REASON: 그 링크는 일부러 일반 이동으로 글 페이지 전체(목차·이어서 읽기)를 연다
   function openLinkedPost(e: React.MouseEvent<HTMLDialogElement>) {
@@ -60,7 +65,7 @@ export function Reader({
     if (url.origin !== window.location.origin || !/^\/posts\/[^/]+\/?$/.test(url.pathname)) return;
     e.preventDefault();
     e.stopPropagation();
-    router.replace(`${url.pathname.replace(/\/$/, '')}?from=museum${url.hash}`);
+    router.replace(`${readerHref(url.pathname.split('/')[2])}${url.hash}`);
   }
 
   function checkEnd() {

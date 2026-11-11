@@ -26,8 +26,7 @@ const components: MDXComponents = {
   // 글끼리 잇는 내부 링크(/posts/<slug>)는 사이트 안에서 이동한다. 밖으로 가는 링크는 그대로 둔다.
   // 박물관 두루마리 안에서는 Reader 가 이 링크를 가로채 그 글의 두루마리로 바꿔 연다.
   // @MX:WARN: 내부 링크에 prefetch 를 켜지 않는다
-  // @MX:REASON: 두루마리 안에서 미리 받으면 Next-Url: /museum 으로 받은 가로채기 응답이 Vary 에 Next-Url 이 없어
-  // /posts/<slug> 캐시로 남고, 박물관 밖에서 그 글을 열 때 글 페이지 대신 두루마리 구조가 쓰일 수 있다
+  // @MX:REASON: 두루마리 안에서는 Reader 가 이 링크를 /museum/read/<slug> 로 바꿔 열어, 미리 받은 /posts/<slug> 는 쓰이지 않고 요청만 늘어난다
   a: ({ href = '', ...props }: ComponentProps<'a'>) =>
     href.startsWith('/') ? <Link href={href} prefetch={false} {...props} /> : <a href={href} {...props} />,
   pre: CodeBlock,

@@ -1942,6 +1942,8 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     }
     let dx = 0;
     let dz = 0;
+    // 길을 따라 걸을 때 다음 경유점까지 남은 거리. 한 걸음이 이보다 길면 줄인다
+    let reach = Infinity;
     if (!paused()) {
       if (keys.has('left')) dx -= 1;
       if (keys.has('right')) dx += 1;
@@ -1962,6 +1964,7 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
         } else {
           dx = vx / d;
           dz = vz / d;
+          reach = d;
         }
       }
     }
@@ -1969,7 +1972,10 @@ export function mountMuseum(root: HTMLElement, options: MuseumOptions): () => vo
     const southward = dz > 0;
     if (dx || dz) {
       const n = Math.hypot(dx, dz);
-      const sp = 3.6 * dt;
+      // @MX:WARN: 길을 따라 걸을 때는 한 걸음을 경유점까지 남은 거리(reach)로 자른다
+      // @MX:REASON: 프레임이 느리면(약 20fps 아래) 한 걸음(3.6 × dt)이 도착 판정 0.08 보다 커서 경유점을 지나쳤다
+      // 되돌아오기를 되풀이하며 제자리에서 맴돌았다. 부엉이 안내로 먼 진열대까지 못 가던 버그(실제 겪은 버그)
+      const sp = Math.min(3.6 * dt, reach);
       dir = Math.atan2(dx, dz);
       moved = step((dx / n) * sp, (dz / n) * sp);
       if (!moved && path.length) {

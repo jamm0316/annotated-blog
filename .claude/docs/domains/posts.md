@@ -64,13 +64,13 @@
 - **날짜 표기**: `formatDate` 는 `-` 를 `.` 으로 바꾼다(`2026-11-06` → `2026.11.06`).
 - **목차**: `[data-prose]` 안의 `h2[id]`·`h3[id]` 를 모은다(id 는 `rehype-slug`). 화면 높이 30% 선을 지난 마지막 소제목이 지금 읽는 소제목이고, 그 본문 소제목에 `data-current` 를 단다. 왼쪽 선은 본문을 읽은 비율만큼 `scaleY` 로 찬다.
 - **이어서 읽기 카드 등장**: `scrollY + innerHeight >= scrollHeight - 24` 이면 `data-state="in"` 이고 `<html>` 에 `data-reading-done` 을 단다(globals.css 가 본문·목차를 흐린다). 단, 목차·`#` 링크 클릭이나 `#` 이 붙은 주소로 바닥에 닿았으면 흐리지 않고, 독자가 휠·터치·키로 직접 스크롤해야 흐린다(바닥에서는 scroll 이벤트가 없어 이 입력을 직접 본다). 짧은 마지막 절로 건너뛰면 바닥에 닿아 읽으려던 글이 흐려지던 문제를 막는다.
-- **공유 버튼**: 글 머리 메타 줄(날짜 · 읽는 시간 · 조회 · 연재) 오른쪽 끝(`margin-left: auto`). 공유하는 주소는 서버에서 만든 `postUrl(slug)`(운영 절대 주소)이고, 주소창 값을 쓰지 않는다(박물관 두루마리의 `?from=museum`·미리보기 도메인이 새지 않게). 터치 화면(`pointer: coarse`)에 `navigator.share` 가 있으면 공유 시트를 띄우고, 시트를 닫은 것(`AbortError`)은 아무것도 하지 않는다. 그 밖에는 클립보드에 복사하고 2초 동안 '링크 복사됨'(실패하면 '복사 실패')을 보인다.
+- **공유 버튼**: 글 머리 메타 줄(날짜 · 읽는 시간 · 조회 · 연재) 오른쪽 끝(`margin-left: auto`). 공유하는 주소는 서버에서 만든 `postUrl(slug)`(운영 절대 주소)이고, 주소창 값을 쓰지 않는다(박물관 두루마리 주소 `/museum/read/<slug>`·미리보기 도메인이 새지 않게). 터치 화면(`pointer: coarse`)에 `navigator.share` 가 있으면 공유 시트를 띄우고, 시트를 닫은 것(`AbortError`)은 아무것도 하지 않는다. 그 밖에는 클립보드에 복사하고 2초 동안 '링크 복사됨'(실패하면 '복사 실패')을 보인다.
 - **EOF**: `IntersectionObserver`(`rootMargin: '0px 0px -20% 0px'`)로 한 번 들어오면 `is-drawn` 을 달고 관찰을 끊는다.
 
 ### 핵심 설계 결정
 
 - **글 파일이 곧 DB**: 웹 에디터 없이 에이전트가 MDX 파일을 더하는 것이 발행 절차이므로, 형식이 틀린 frontmatter 는 런타임이 아니라 빌드에서 멈춘다(`throw`).
-- **본문 컴포넌트 하나**: `PostArticle` 은 글 페이지와 박물관 두루마리(`app/museum/@reader/(..)posts/[slug]`)가 함께 쓴다. 본문은 `import(\`../../content/posts/${slug}/index.mdx\`)` 로 서버에서 불러온다.
+- **본문 컴포넌트 하나**: `PostArticle` 은 글 페이지와 박물관 두루마리(`app/museum/@reader/read/[slug]`)가 함께 쓴다. 본문은 `import(\`../../content/posts/${slug}/index.mdx\`)` 로 서버에서 불러온다.
 - **MDX 파이프라인**(`next.config.ts`): `pageExtensions: ['ts','tsx','mdx']`. remark: `remark-frontmatter` → `remark-gfm` → `src/lib/remark-unnest-links.mjs`. rehype: `rehype-slug` → `rehype-pretty-code`(테마는 `createCssVariablesTheme({ name: 'evan-log', variablePrefix: '--code-' })`, `defaultLang: 'text'`, `keepBackground: false`). Turbopack 이 옵션을 직렬화하므로 플러그인은 이름 문자열, 로컬 플러그인은 `process.cwd()` 기준 절대 경로 문자열로 넘긴다. `cacheComponents` 는 끈다(공개 글 0편이면 `generateStaticParams` 가 빈 배열이라 빌드 실패).
 - **중첩 링크 제거**: 글 안에 직접 쓴 `<a>` 의 글자가 URL 이면 `remark-gfm` 이 다시 링크로 만들어 `<a>` 안에 `<a>` 가 생기고, 하이드레이션이 깨져 `<html data-theme>` 까지 지워진다. `remark-unnest-links` 가 `<a>`(mdxJsx 요소) 안의 `link` 노드를 글자만 남긴다.
 
@@ -117,7 +117,7 @@ default function remarkUnnestLinks(): (tree) => void;
 ### 본문 링크
 
 - MDX 의 `a` 는 `src/mdx-components.tsx` 가 바꿔 끼운다. `/` 로 시작하는 내부 링크는 `next/link`(`prefetch={false}`), 나머지는 일반 `<a>`.
-- prefetch 를 끄는 까닭: 박물관 두루마리 안에서 미리 받으면 가로채기 응답이 `/posts/<slug>` 캐시로 남아(Vary 에 `Next-Url` 없음) 박물관 밖에서 그 글을 열 때 섞일 수 있다.
+- prefetch 를 끄는 까닭: 본문 속 글 링크는 두루마리 안에서 `Reader` 가 가로채 `/museum/read/<slug>` 로 바꿔 열므로 `/posts/<slug>` 를 미리 받아도 쓰이지 않는다.
 - 내 Medium 글(`medium.com/@evanbackeng/...`)로 가는 링크는 이 블로그의 같은 글 `/posts/<slug>` 로 쓴다. 다른 사람의 Medium 프로필(`medium.com/u/...`)은 그대로 둔다.
 
 ### DOM 계약
@@ -140,7 +140,7 @@ default function remarkUnnestLinks(): (tree) => void;
 - **posts → playgrounds**: `src/mdx-components.tsx` 가 `src/components/mdx/*` 의 `BatchPlayground`·`CodeBlock`·`Figure`·`HeapPlayground`·`LoaderPlayground`·`NextStepPlayground` 를 import 해 MDX 태그로 등록한다.
 - **browse → posts**: `src/app/page.tsx` 가 `getPosts()` 를 불러 `slug, title, category, topic, areas, series, badge, date, lang, summary, hook, excerpt` 를 골라 넘긴다. `src/components/PostBrowser.tsx` 가 `AREAS` 를 import 해 칩 순서로 쓴다.
 - **search → posts**: `src/lib/search.ts` 가 `getPosts()` 로 검색 목록과 `/api/ask` 카탈로그(`topic`, `areas`, `tags`, `series`, `description`, `summary`, `excerpt`)를 만든다. `/api/ask` 함수에 글 파일을 싣기 위해 `next.config.ts` 의 `outputFileTracingIncludes` 가 `./content/posts/**/*.mdx` 를 포함한다.
-- **museum → posts**: `src/lib/museum.ts` 가 `getPosts()` 와 `Quiz` 를 import 해 진열품을 만든다(`short`, `quiz` 사용). `src/app/museum/@reader/(..)posts/[slug]/page.tsx` 가 `getPosts`·`getPost`·`PostArticle` 을 써서 두루마리에 본문을 싣는다(이쪽은 `dynamicParams` 를 false 로 두지 않는다).
+- **museum → posts**: `src/lib/museum.ts` 가 `getPosts()` 와 `Quiz` 를 import 해 진열품을 만든다(`short`, `quiz` 사용). `src/app/museum/@reader/read/[slug]/page.tsx` 가 `getPosts`·`getPost`·`PostArticle` 을 써서 두루마리에 본문을 싣는다(이쪽은 `dynamicParams` 를 false 로 두지 않는다).
 - **posts → shell**: 레이아웃·토큰·`data-current`·`data-reading-done`·`.prose` 스타일은 `src/app/globals.css` 에 있다.
 
-최종 갱신: 2026-11-07
+최종 갱신: 2026-11-11
