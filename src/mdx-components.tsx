@@ -11,10 +11,10 @@ import { FailurePointPlayground } from '@/components/mdx/FailurePointPlayground'
 import { Figure } from '@/components/mdx/Figure';
 import { HeapPlayground } from '@/components/mdx/HeapPlayground';
 import { JobSequencePlayground } from '@/components/mdx/JobSequencePlayground';
-import { JobStatePlayground } from '@/components/mdx/JobStatePlayground';
+import { JobStateDiagram } from '@/components/mdx/JobStateDiagram';
 import { LoaderPlayground } from '@/components/mdx/LoaderPlayground';
 import { NextStepPlayground } from '@/components/mdx/NextStepPlayground';
-import { QueueMapPlayground } from '@/components/mdx/QueueMapPlayground';
+import { QueueClassDiagram } from '@/components/mdx/QueueClassDiagram';
 import { RecoveryPlayground } from '@/components/mdx/RecoveryPlayground';
 
 // 글 안에서 import 없이 쓰는 컴포넌트를 여기에 등록한다.
@@ -30,10 +30,10 @@ const components: MDXComponents = {
   Figure,
   HeapPlayground,
   JobSequencePlayground,
-  JobStatePlayground,
+  JobStateDiagram,
   LoaderPlayground,
   NextStepPlayground,
-  QueueMapPlayground,
+  QueueClassDiagram,
   RecoveryPlayground,
   // 글끼리 잇는 내부 링크(/posts/<slug>)는 사이트 안에서 이동한다. 밖으로 가는 링크는 그대로 둔다.
   // 박물관 두루마리 안에서는 Reader 가 이 링크를 가로채 그 글의 두루마리로 바꿔 연다.

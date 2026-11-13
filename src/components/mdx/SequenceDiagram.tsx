@@ -46,7 +46,10 @@ export function SequenceDiagram({ participants, rows, marks, counts, label }: Pr
               const pad = 50 / n;
               return (
                 <div key={i} className={`seq__row seq__row--note is-${mark}`}>
-                  <div className="seq__note" style={{ marginLeft: `${a - pad * 0.8}%`, width: `${b - a + pad * 1.6}%` }}>
+                  <div
+                    className="seq__note"
+                    style={{ marginLeft: `${a - pad * 0.8}%`, width: `${b - a + pad * 1.6}%` }}
+                  >
                     <span>{r.label}</span>
                     {r.sub && <span className="seq__sub">{r.sub}</span>}
                   </div>

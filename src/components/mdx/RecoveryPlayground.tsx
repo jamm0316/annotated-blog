@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
-// @MX:NOTE: 회수 기준과 판독 시간을 바꿔 멀쩡한 작업이 회수돼 AI 를 두 번 부르는지 보는 타임라인 (async-job-queue-without-broker)
+// @MX:NOTE: 회수 장면 버튼을 누르면 시간 축이 스스로 흘러 워커와 회수가 어떻게 겹치는지 보여 주는 타임라인 (async-job-queue-without-broker)
 // @MX:SPEC: .claude/docs/domains/playgrounds.md
 
-import { useState } from "react";
+import { useState } from 'react';
+import { usePlay } from './usePlay';
 
 type Props = {
   /** 판독 타임아웃(분). 본문 15분 */
@@ -15,109 +16,110 @@ type Props = {
   caption?: string;
 };
 
-// 눈금 끝(분)
-const SCALE = 40;
-const pct = (m: number) => `${(Math.min(m, SCALE) / SCALE) * 100}%`;
+// 눈금 끝(분). 시간 축은 1분에 한 칸씩 스스로 흐른다
+const SCALE = 35;
+const pct = (m: number) => `${(Math.max(0, Math.min(m, SCALE)) / SCALE) * 100}%`;
 
-// 워커 A 는 판독을 받거나 타임아웃까지 기다린다. 회수 기준이 그보다 짧으면 A 가 기다리는 동안 문서가 RECEIVED 로 돌아가고
-// 다른 워커 B 가 같은 작업으로 AI 를 다시 부른다. 워커가 죽은 경우에는 회수 기준만큼 멈춰 있다가 B 가 다시 처리한다.
-// 회수 스케줄러는 60초마다 돌므로 실제 회수는 기준보다 최대 1분 늦을 수 있다(그림은 기준 시각에 그린다).
-export function RecoveryPlayground({
-  timeout,
-  stale: stale0,
-  longest,
-  caption,
-}: Props) {
-  const [stale, setStale] = useState(stale0);
-  const [read, setRead] = useState(longest);
-  const [dead, setDead] = useState(false);
+type Scene = {
+  key: string;
+  label: string;
+  /** 회수 기준 위치(분) */
+  at: number;
+  /** 기준선 라벨. 본문에 없는 값은 숫자를 붙이지 않는다 */
+  atLabel: string;
+  /** 워커 A 가 끝나는 시각, dead 면 죽은 시각(그림용 위치) */
+  aEnd: number;
+  dead: boolean;
+  /** 회수돼 워커 B 가 다시 처리하는가 */
+  again: boolean;
+  /** 끝났을 때 보일 결과 [이름, 값] */
+  result: [string, string];
+  point: string;
+};
 
-  const end = Math.min(read, timeout);
-  const timedOut = read > timeout;
-  const recovered = dead || stale < end;
-  const calls = recovered ? 2 : 1;
-  const changed = stale !== stale0 || read !== longest || dead;
-
-  let verdict: string;
-  if (dead) verdict = `작업이 ${stale}분 동안 멈춰 있다가 다시 처리된다`;
-  else if (recovered)
-    verdict = "아직 응답을 기다리는 작업을 회수해 AI 를 한 번 더 부른다";
-  else if (timedOut)
-    verdict = `워커가 ${timeout}분에 타임아웃으로 끝낸 뒤라 회수할 일이 없다`;
-  else verdict = `워커가 ${end}분에 끝내 회수할 일이 없다`;
+export function RecoveryPlayground({ timeout, stale, longest, caption }: Props) {
+  // 본문 숫자는 props 로만 받는다. '회수 기준이 짧으면' 장면의 기준선 위치는 그림을 위한 자리라 숫자를 적지 않는다
+  const SCENES: Scene[] = [
+    {
+      key: 'ok',
+      label: `본문 설정 · 회수 ${stale}분`,
+      at: stale,
+      atLabel: `회수 ${stale}분`,
+      aEnd: longest,
+      dead: false,
+      again: false,
+      result: ['AI 판독 요청', '1번'],
+      point: `가장 오래 걸린 판독 ${longest}분도 타임아웃 ${timeout}분 안에 끝나, 회수 ${stale}분이 오기 전에 작업이 닫힌다`,
+    },
+    {
+      key: 'short',
+      label: '회수 기준이 판독보다 짧으면',
+      at: longest * 0.6,
+      atLabel: '회수 기준',
+      aEnd: longest,
+      dead: false,
+      again: true,
+      result: ['AI 판독 요청', '2번'],
+      point: '아직 응답을 기다리는 멀쩡한 작업을 회수해, 다른 워커가 같은 작업으로 AI 를 한 번 더 부른다',
+    },
+    {
+      key: 'dead',
+      label: '워커가 판독 도중 죽으면',
+      at: stale,
+      atLabel: `회수 ${stale}분`,
+      aEnd: 2,
+      dead: true,
+      again: true,
+      result: ['PROCESSING 으로 멈춰 있던 시간', `${stale}분`],
+      point: `작업이 PROCESSING 으로 ${stale}분 동안 멈춰 있다가, 회수된 뒤 다른 워커가 다시 처리한다`,
+    },
+  ];
+  const [key, setKey] = useState('ok');
+  const s = SCENES.find((x) => x.key === key)!;
+  const { ref, step: now, play, done } = usePlay<HTMLElement>(SCALE, 70);
+  const recovered = s.again && now >= s.at;
+  const bLen = Math.min(longest, timeout);
 
   return (
-    <figure className="figure card playground">
-      <div className="playground__controls">
-        <label className="playground__field">
-          <span className="mono">회수 기준</span>
-          <input
-            type="range"
-            min={1}
-            max={30}
-            step={1}
-            value={stale}
-            onChange={(e) => setStale(Number(e.target.value))}
-          />
-          <output className="mono">{stale}분</output>
-        </label>
-        <label className="playground__field">
-          <span className="mono">이번 판독 시간</span>
-          <input
-            type="range"
-            min={1}
-            max={30}
-            step={1}
-            value={read}
-            disabled={dead}
-            onChange={(e) => setRead(Number(e.target.value))}
-          />
-          <output className="mono">{read}분</output>
-        </label>
-      </div>
-      <div className="stepper__options claim__lock">
-        {[false, true].map((v) => (
-          <label key={String(v)} className="mono">
-            <input
-              type="radio"
-              name="recovery-dead"
-              checked={dead === v}
-              onChange={() => setDead(v)}
-            />
-            <span>{v ? "워커가 판독 도중 죽음" : "워커가 정상"}</span>
-          </label>
+    <figure ref={ref} className="figure card playground">
+      <div className="scene__buttons">
+        {SCENES.map((x) => (
+          <button
+            key={x.key}
+            type="button"
+            className={`mono${x.key === key ? ' is-on' : ''}`}
+            aria-pressed={x.key === key}
+            onClick={() => {
+              setKey(x.key);
+              play();
+            }}
+          >
+            {x.label}
+          </button>
         ))}
       </div>
 
-      <div
-        className="recov mono"
-        role="img"
-        aria-label={`처리 시작부터 ${SCALE}분까지의 타임라인. ${verdict}`}
-      >
+      <div className="recov mono" role="img" aria-label={`${s.label}: ${s.point}`}>
         <div className="recov__scale">
           <span className="recov__mark" style={{ left: pct(timeout) }}>
             <span>타임아웃 {timeout}분</span>
           </span>
-          <span
-            className="recov__mark recov__mark--stale"
-            style={{ left: pct(stale) }}
-          >
-            <span>회수 {stale}분</span>
+          <span className={`recov__mark recov__mark--stale${recovered ? ' is-hit' : ''}`} style={{ left: pct(s.at) }}>
+            <span>{s.atLabel}</span>
           </span>
+          <span className="recov__now" style={{ left: pct(now) }} />
         </div>
         <div className="recov__lane">
           <span className="recov__name">워커 A</span>
           <span className="recov__track">
-            {dead ? (
-              <span
-                className="recov__bar recov__bar--dead"
-                style={{ width: pct(1) }}
-              />
-            ) : (
-              <span
-                className={`recov__bar${timedOut ? " recov__bar--timeout" : ""}`}
-                style={{ width: pct(end) }}
-              />
+            <span
+              className={`recov__bar${s.dead ? ' recov__bar--dead' : ''}`}
+              style={{ width: pct(Math.min(now, s.aEnd)) }}
+            />
+            {s.dead && now >= s.aEnd && (
+              <span className="recov__x" style={{ left: pct(s.aEnd) }}>
+                ✕
+              </span>
             )}
           </span>
         </div>
@@ -127,16 +129,13 @@ export function RecoveryPlayground({
             {recovered && (
               <span
                 className="recov__bar recov__bar--again"
-                style={{
-                  left: pct(stale),
-                  width: pct(Math.min(read, timeout)),
-                }}
+                style={{ left: pct(s.at), width: pct(Math.min(now - s.at, bLen)) }}
               />
             )}
           </span>
         </div>
         <div className="recov__axis">
-          {[0, 10, 20, 30, 40].map((m) => (
+          {[0, 10, 20, 30].map((m) => (
             <span key={m} style={{ left: pct(m) }}>
               {m}분
             </span>
@@ -145,23 +144,9 @@ export function RecoveryPlayground({
       </div>
 
       <p className="playground__result mono" aria-live="polite">
-        AI 판독 요청 <strong>{calls}번</strong>
-        <span className="stepper__token">{verdict}</span>
+        {s.result[0]} <strong>{done ? s.result[1] : '…'}</strong>
       </p>
-      <p className="playground__legend mono">
-        <span>가장 오래 걸린 판독 {longest}분 · 회수 스케줄러는 60초마다</span>
-        <button
-          type="button"
-          onClick={() => {
-            setStale(stale0);
-            setRead(longest);
-            setDead(false);
-          }}
-          disabled={!changed}
-        >
-          본문 가정으로
-        </button>
-      </p>
+      <p className={`scene__point mono${done ? ' is-done' : ''}`}>{s.point}</p>
       {caption && <figcaption className="mono">{caption}</figcaption>}
     </figure>
   );

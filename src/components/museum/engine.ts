@@ -134,8 +134,11 @@ function layout(exhibits: Exhibit[]) {
   grid[H - 1][MID] = '.';
 
   const spots: { exhibit: Exhibit; x: number; z: number }[] = [];
-  notes.forEach((e, i) => spots.push({ exhibit: e, x: COLS_NOTE[i % 3], z: 2 + 3 * Math.floor(i / 3) }));
-  labs.forEach((e, i) => spots.push({ exhibit: e, x: COLS_LAB[i % 3], z: 2 + 3 * Math.floor(i / 3) }));
+  // 최신 글을 문 쪽(바깥)에 둔다. 문턱 벽 바로 안쪽 줄이 0번 줄이고 안쪽으로 갈수록 오래된 글이다
+  // 문에서 r 번째 줄의 z. 줄 간격 3, 가장 안쪽 줄은 z = 2
+  const rowZ = (i: number) => 2 + 3 * (rows - 1 - Math.floor(i / 3));
+  notes.forEach((e, i) => spots.push({ exhibit: e, x: COLS_NOTE[i % 3], z: rowZ(i) }));
+  labs.forEach((e, i) => spots.push({ exhibit: e, x: COLS_LAB[i % 3], z: rowZ(i) }));
   spots.forEach(({ x, z }) => (grid[z][x] = 'P'));
 
   grid[zw + 2][MID] = 'O';

@@ -1767,18 +1767,6 @@ button:active:not(:disabled) {
   font-size: 12px;
   color: var(--ink-70);
 }
-.playground__buttons {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-.playground__buttons button {
-  margin-left: 0;
-}
-.playground__legend button.is-primary:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
 
 /* 시퀀스 다이어그램(SequenceDiagram). 좁은 화면에서는 그림 안에서만 가로로 민다 */
 .seq__scroll {
@@ -1907,93 +1895,70 @@ button:active:not(:disabled) {
   color: var(--ink-70);
 }
 
-/* 작업 문서 상태 그림(JobStatePlayground) */
-.jobstate {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
-}
-.jobstate__map {
-  display: grid;
-  gap: 14px;
-}
-.jobstate__row {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-.jobstate__state {
-  flex: 1 1 0;
-  max-width: 150px;
-  padding: 10px 4px;
-  font-size: 11px;
-  text-align: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  transition:
-    border-color var(--dur-fast) ease-out,
-    background-color var(--dur-fast) ease-out,
-    color var(--dur-fast) ease-out;
-}
-.jobstate__state.is-seen {
-  border-style: solid;
-}
-.jobstate__state.is-current {
-  border: 1px solid var(--accent);
-  background-color: var(--accent);
-  color: var(--on-accent);
-}
-.jobstate__doc {
-  margin: 0;
-  padding: 12px 14px;
-  font-size: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-.jobstate__doc div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0;
-}
-.jobstate__doc dt {
-  color: var(--ink-70);
-}
-.jobstate__doc dd {
-  margin: 0;
-}
-.jobstate__events {
+/* 장면 버튼: 누르면 그 장면이 처음부터 스스로 재생된다(usePlay) */
+.scene__buttons {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 6px;
+  margin-bottom: 20px;
 }
-.jobstate__events button {
-  min-height: 40px;
-  padding: 0 14px;
+.scene__buttons button {
+  min-height: 36px;
+  padding: 0 12px;
   font-size: 12px;
   color: var(--ink);
   background: transparent;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color var(--dur-instant) ease-out, color var(--dur-instant) ease-out;
+  transition:
+    border-color var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out,
+    color var(--dur-instant) ease-out;
 }
 @media (hover: hover) {
-  .jobstate__events button:hover {
-    background-color: var(--accent);
-    color: var(--on-accent);
+  .scene__buttons button:hover {
+    border-color: var(--accent);
   }
 }
-.jobstate__end {
+.scene__buttons button.is-on {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+.scene__point {
+  margin: 0;
   font-size: 12px;
+  line-height: 1.6;
   color: var(--ink-70);
+  transition: color var(--dur-fast) ease-out;
+}
+.scene__point.is-done {
+  color: var(--ink);
 }
 
 /* 선점 경쟁(ClaimPlayground) */
-.claim__lock {
-  margin-top: 16px;
+.claim__pods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+}
+.claim__pod {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  color: var(--ink-70);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  transition: border-color var(--dur-fast) ease-out, color var(--dur-fast) ease-out;
+}
+.claim__pod.is-on {
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.claim__pod small {
+  font-size: 11px;
 }
 .claim__jobs {
   display: grid;
@@ -2015,8 +1980,12 @@ button:active:not(:disabled) {
   transition: border-color var(--dur-fast) ease-out, color var(--dur-fast) ease-out;
 }
 .claim__jobs li.is-taken {
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+.claim__jobs li.is-fresh {
   color: var(--accent);
-  border: 1px solid var(--accent);
+  border-color: var(--accent);
 }
 
 /* 회수 기준 타임라인(RecoveryPlayground) */
@@ -2049,11 +2018,6 @@ button:active:not(:disabled) {
   left: 0;
   background-color: var(--ink);
   border-radius: 3px;
-  transition: left var(--dur-fast) ease-out, width var(--dur-fast) ease-out;
-}
-.recov__bar--timeout {
-  background: repeating-linear-gradient(-45deg, var(--ink) 0 1px, transparent 1px 6px);
-  border: 1px solid var(--ink);
 }
 .recov__bar--again {
   background-color: var(--accent);
@@ -2093,6 +2057,24 @@ button:active:not(:disabled) {
   color: var(--accent);
   top: -36px;
 }
+.recov__mark--stale.is-hit {
+  border-left-style: solid;
+  border-left-width: 2px;
+}
+/* 지금 시각. 시간 축을 따라 한 번 흐르고 끝에서 멈춘다 */
+.recov__now {
+  position: absolute;
+  top: 0;
+  bottom: 18px;
+  border-left: 1px solid var(--ink-70);
+}
+.recov__x {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--accent);
+  font-size: 13px;
+}
 .recov__axis {
   position: relative;
   height: 16px;
@@ -2111,74 +2093,124 @@ button:active:not(:disabled) {
   transform: translateX(-100%);
 }
 
-/* 작업 큐 구조도(QueueMapPlayground) */
-.qmap {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+/* 원문 모양 그대로 그린 다이어그램(QueueClassDiagram·JobStateDiagram).
+   화면에 들어오면 화살표가 한 번 그려지고(useDrawOnce), 박스에 올리면 이어진 화살표만 강조한다 */
+.diagram__scroll {
+  overflow-x: auto;
 }
-.qmap__col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
+.diagram__scroll--state {
+  max-width: 440px;
+  margin: 0 auto;
 }
-.qmap__group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
+.diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
-.qmap__title {
-  margin: 0;
-  font-size: 11px;
-  color: var(--ink-70);
+.diagram--class {
+  min-width: 620px;
 }
-.qmap__node {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  font-size: 11px;
-  text-align: left;
-  color: var(--ink-70);
-  background: transparent;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  overflow-wrap: anywhere;
-  cursor: pointer;
-  transition: border-color var(--dur-instant) ease-out, color var(--dur-instant) ease-out;
+.diagram text {
+  fill: var(--ink);
+  font-size: 14px;
 }
-.qmap__node.is-linked {
-  color: var(--ink);
-  border: 1px solid var(--ink);
+.diagram--state text,
+.diagram--state .diagram__edge text {
+  font-size: 18px;
 }
-.qmap__node.is-picked {
-  color: var(--accent);
-  border: 1px solid var(--accent);
+.diagram__box {
+  outline: none;
 }
-.qmap__name {
+.diagram__box rect {
+  fill: var(--bg-raised);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+  transition: stroke var(--dur-instant) ease-out;
+}
+.diagram__box line {
+  stroke: var(--line-strong);
+}
+.diagram__name {
   font-weight: 500;
 }
-.qmap__items {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 10.5px;
+.diagram .diagram__member {
+  fill: var(--ink-70);
+  font-size: 13px;
 }
-.qmap__items .is-hit {
-  color: var(--accent);
+.diagram__box.is-on rect {
+  stroke: var(--ink);
+}
+.diagram__box.is-picked rect,
+.diagram__box:focus-visible rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.diagram .diagram__box.is-picked .diagram__name,
+.diagram .diagram__member.is-hit {
+  fill: var(--accent);
+}
+.diagram__edge path {
+  fill: none;
+  stroke: var(--ink-70);
+  stroke-width: 1.4;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition:
+    stroke-dashoffset var(--dur-slow) var(--ease-out),
+    stroke var(--dur-instant) ease-out;
+}
+.is-drawn .diagram__edge path {
+  stroke-dashoffset: 0;
+}
+.diagram .diagram__edge text {
+  font-size: 14px;
+  fill: var(--ink-70);
+  paint-order: stroke;
+  stroke: var(--bg-raised);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+.diagram__head {
+  fill: var(--ink-70);
+}
+/* 선을 다 그린 뒤에 화살촉과 라벨이 뜬다 */
+.diagram__head,
+.diagram .diagram__edge text {
+  opacity: 0;
+  transition: opacity var(--dur-fast) ease-out var(--dur-slow);
+}
+.is-drawn .diagram__head,
+.is-drawn .diagram .diagram__edge text {
+  opacity: 1;
+}
+.is-hovering .diagram__edge:not(.is-on) path {
+  stroke: var(--line-strong);
+}
+.diagram__edge.is-on path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.diagram .diagram__edge.is-on text,
+.diagram .diagram__head--on {
+  fill: var(--accent);
+}
+.diagram__dot {
+  fill: var(--ink);
+}
+.diagram__end {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .diagram__edge path,
+  .diagram__head,
+  .diagram .diagram__edge text {
+    transition: none;
+  }
 }
 @media (max-width: 760px) {
-  .jobstate {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .qmap {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .qmap__col:last-child {
-    grid-column: 1 / -1;
-  }
   .seq__hint {
     display: block;
   }

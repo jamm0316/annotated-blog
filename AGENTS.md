@@ -87,13 +87,14 @@ draft: false
 | `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
 | `<BatchPlayground n batch batchMb caption />` | 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리 (`stream-pipeline-download-oom`) |
 | `<NextStepPlayground caption />` | 1차 인증 뒤 판정 서비스가 돌려줄 다음 단계. 분기는 글의 흐름도(`08-next-step.png`)와 같다 (`two-factor-auth-design`) |
-| `<QueueMapPlayground caption />` | 작업 큐 구성 요소를 눌러 부르는 대상·저장소 메서드를 보는 구조도 (`async-job-queue-without-broker`) |
-| `<JobStatePlayground caption />` | 작업 문서 하나에 사건(선점·판독 실패·워커 죽음·통지 실패)을 일으켜 상태와 재시도 횟수를 따라가는 상태 전이도 (`async-job-queue-without-broker`) |
-| `<JobSequencePlayground caption />` | 접수부터 결과 전달까지 한 줄씩 넘겨 보는 시퀀스 (`async-job-queue-without-broker`) |
-| `<ClaimPlayground caption />` | 파드 수와 분산 락을 바꿔 폴링 한 번에 누가 어떤 작업을 선점하는지 보는 그림 (`async-job-queue-without-broker`) |
-| `<RecoveryPlayground timeout stale longest caption />` | 회수 기준·판독 시간을 바꿔 멀쩡한 작업이 회수돼 AI 를 두 번 부르는지 보는 타임라인 (`async-job-queue-without-broker`) |
-| `<FailurePointPlayground caption />` | 판독·콜백 실패 지점과 재시도 방식을 골라 다시 실행되는 줄과 토큰 차감 횟수를 보는 시퀀스 (`async-job-queue-without-broker`) |
+| `<QueueClassDiagram caption />` | 클래스 다이어그램을 UML 모양 그대로 그린다. 화면에 들어오면 화살표가 한 번 그려지고, 클래스에 올리면 이어진 관계가 강조된다 (`async-job-queue-without-broker`) |
+| `<JobStateDiagram caption />` | 상태 다이어그램을 원래 모양 그대로 그린다. 움직임은 클래스 다이어그램과 같다 (`async-job-queue-without-broker`) |
+| `<JobSequencePlayground caption />` | 화면에 들어오면 접수부터 결과 전달까지 한 줄씩 스스로 재생되는 시퀀스 (`async-job-queue-without-broker`) |
+| `<ClaimPlayground caption />` | 장면 버튼(원자적 선점 / 분산 락)을 누르면 폴링마다 누가 어떤 작업을 가져가는지 스스로 재생된다 (`async-job-queue-without-broker`) |
+| `<RecoveryPlayground timeout stale longest caption />` | 장면 버튼(본문 설정 / 회수 기준이 짧으면 / 워커가 죽으면)을 누르면 시간 축이 흐르며 회수와 AI 중복 호출이 보인다 (`async-job-queue-without-broker`) |
+| `<FailurePointPlayground caption />` | 실패 장면 버튼을 누르면 시퀀스가 재생되며 실패 지점이 켜지고 다시 실행되는 줄(×2)과 토큰 차감 횟수가 보인다 (`async-job-queue-without-broker`) |
 
+- 글 안의 그림은 독자가 조작법을 익혀야 하는 놀이터로 만들지 않는다. 모델하우스처럼 스스로 한 번 움직이거나, 장면 버튼 한 번에 그 장면이 처음부터 재생돼 문제가 나는 곳을 짚어 보이게 한다. 슬라이더나 한 칸씩 넘기기처럼 독자가 값을 조정하는 방식은 새로 만들지 않는다. 원래 다이어그램(UML·상태도)은 모양을 그대로 두고 움직임만 조금 더한다.
 - 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
 - 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.
 - 내 Medium 글로 가는 링크는 이 블로그의 같은 글 `/posts/<slug>` 로 바꿔 쓴다(Medium 에서 옮겨 온 글도). 글 페이지에서는 그 글로, 박물관 두루마리에서는 그 글의 두루마리로 열린다. 이 블로그에 없는 글이면 Medium 주소를 그대로 둔다.
