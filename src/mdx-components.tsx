@@ -5,11 +5,17 @@ import type { ComponentProps } from 'react';
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import { BatchPlayground } from '@/components/mdx/BatchPlayground';
+import { ClaimPlayground } from '@/components/mdx/ClaimPlayground';
 import { CodeBlock } from '@/components/mdx/CodeBlock';
+import { FailurePointPlayground } from '@/components/mdx/FailurePointPlayground';
 import { Figure } from '@/components/mdx/Figure';
 import { HeapPlayground } from '@/components/mdx/HeapPlayground';
+import { JobSequencePlayground } from '@/components/mdx/JobSequencePlayground';
+import { JobStatePlayground } from '@/components/mdx/JobStatePlayground';
 import { LoaderPlayground } from '@/components/mdx/LoaderPlayground';
 import { NextStepPlayground } from '@/components/mdx/NextStepPlayground';
+import { QueueMapPlayground } from '@/components/mdx/QueueMapPlayground';
+import { RecoveryPlayground } from '@/components/mdx/RecoveryPlayground';
 
 // 글 안에서 import 없이 쓰는 컴포넌트를 여기에 등록한다.
 // pre·table 은 마크다운이 만든 태그를 바꿔 끼운다.
@@ -19,10 +25,16 @@ import { NextStepPlayground } from '@/components/mdx/NextStepPlayground';
 // @MX:REASON: MDX 는 서버에서 그리므로 클라이언트 컴포넌트로 함수를 넘기면 직렬화 오류가 난다
 const components: MDXComponents = {
   BatchPlayground,
+  ClaimPlayground,
+  FailurePointPlayground,
   Figure,
   HeapPlayground,
+  JobSequencePlayground,
+  JobStatePlayground,
   LoaderPlayground,
   NextStepPlayground,
+  QueueMapPlayground,
+  RecoveryPlayground,
   // 글끼리 잇는 내부 링크(/posts/<slug>)는 사이트 안에서 이동한다. 밖으로 가는 링크는 그대로 둔다.
   // 박물관 두루마리 안에서는 Reader 가 이 링크를 가로채 그 글의 두루마리로 바꿔 연다.
   // @MX:WARN: 내부 링크에 prefetch 를 켜지 않는다

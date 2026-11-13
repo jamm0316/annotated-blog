@@ -87,6 +87,12 @@ draft: false
 | `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
 | `<BatchPlayground n batch batchMb caption />` | 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리 (`stream-pipeline-download-oom`) |
 | `<NextStepPlayground caption />` | 1차 인증 뒤 판정 서비스가 돌려줄 다음 단계. 분기는 글의 흐름도(`08-next-step.png`)와 같다 (`two-factor-auth-design`) |
+| `<QueueMapPlayground caption />` | 작업 큐 구성 요소를 눌러 부르는 대상·저장소 메서드를 보는 구조도 (`async-job-queue-without-broker`) |
+| `<JobStatePlayground caption />` | 작업 문서 하나에 사건(선점·판독 실패·워커 죽음·통지 실패)을 일으켜 상태와 재시도 횟수를 따라가는 상태 전이도 (`async-job-queue-without-broker`) |
+| `<JobSequencePlayground caption />` | 접수부터 결과 전달까지 한 줄씩 넘겨 보는 시퀀스 (`async-job-queue-without-broker`) |
+| `<ClaimPlayground caption />` | 파드 수와 분산 락을 바꿔 폴링 한 번에 누가 어떤 작업을 선점하는지 보는 그림 (`async-job-queue-without-broker`) |
+| `<RecoveryPlayground timeout stale longest caption />` | 회수 기준·판독 시간을 바꿔 멀쩡한 작업이 회수돼 AI 를 두 번 부르는지 보는 타임라인 (`async-job-queue-without-broker`) |
+| `<FailurePointPlayground caption />` | 판독·콜백 실패 지점과 재시도 방식을 골라 다시 실행되는 줄과 토큰 차감 횟수를 보는 시퀀스 (`async-job-queue-without-broker`) |
 
 - 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
 - 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.

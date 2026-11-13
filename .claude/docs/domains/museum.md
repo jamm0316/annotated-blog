@@ -42,7 +42,7 @@
 | `views` | `number` | 지금까지 읽은 사람 수(stats). `getExhibits` 는 0. 연구실은 늘 0 |
 
 `PropKind`: `db · down · phone · shield · scroll · key · bot · branch · leaf · calendar · book · monitor`.
-`PROP_BY_TOPIC`: 캐시→db, 다운로드 API→down, 2단계 인증→phone, 입력 정제→shield, 감사 로그→scroll, 권한 모델→key, AI 코딩→bot, Git→branch, MongoDB→leaf, 회고→calendar.
+`PROP_BY_TOPIC`: 캐시→db, 다운로드 API→down, 2단계 인증→phone, 입력 정제→shield, 감사 로그→scroll, 권한 모델→key, AI 코딩→bot, Git→branch, MongoDB→leaf, 작업 큐→db, 회고→calendar.
 
 `Passport` (`passport.ts`): `{ stamps: Record<string, 1 | 2>; bugs: string[]; cheered: string[] }`. `cheered` 는 부엉이가 이미 축하한 관(`note`/`lab`/`book`/`bug`).
 

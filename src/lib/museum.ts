@@ -64,6 +64,7 @@ const PROP_BY_TOPIC: Record<string, PropKind> = {
   'AI 코딩': 'bot',
   Git: 'branch',
   MongoDB: 'leaf',
+  '작업 큐': 'db',
   회고: 'calendar',
 };
 
