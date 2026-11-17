@@ -30,6 +30,18 @@ const pages = (repo: string, path = '') => `https://jamm0316.github.io/${repo}/$
 // @MX:REASON: src/app/page.tsx, src/lib/search.ts, src/lib/museum.ts 가 import 한다
 export const LAB: LabItem[] = [
   {
+    repo: 'maru',
+    short: '에이전트 비서',
+    title: '마루',
+    kind: '도구',
+    pitch: '에이전트는 여럿, 대화는 하나.',
+    description:
+      'Claude Code 에이전트들에게 일을 나눠 맡기고, 누가 무엇을 했는지 기억해 한 사람으로 답하는 macOS 앱. 기억은 지금·오늘·오래 세 층으로 두고, 매일 03:30 밤사이 정리한다.',
+    stack: ['Electron', 'Claude Code', 'Shell', 'Python'],
+    date: '2026-11-17',
+    url: pages('maru'),
+  },
+  {
     repo: 'travel_plan_gapyeong',
     short: '환갑 여행 앱',
     title: '춘천 환갑여행',
