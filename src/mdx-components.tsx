@@ -4,6 +4,8 @@
 import type { ComponentProps } from 'react';
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
+import { AuthzFlowDiagram } from '@/components/mdx/AuthzFlowDiagram';
+import { AuthzPointsDiagram } from '@/components/mdx/AuthzPointsDiagram';
 import { BatchPlayground } from '@/components/mdx/BatchPlayground';
 import { ClaimPlayground } from '@/components/mdx/ClaimPlayground';
 import { CodeBlock } from '@/components/mdx/CodeBlock';
@@ -25,6 +27,8 @@ import { RecoveryPlayground } from '@/components/mdx/RecoveryPlayground';
 // @MX:WARN: 여기 등록한 클라이언트 컴포넌트에 글에서 함수를 props 로 넘기지 않는다
 // @MX:REASON: MDX 는 서버에서 그리므로 클라이언트 컴포넌트로 함수를 넘기면 직렬화 오류가 난다
 const components: MDXComponents = {
+  AuthzFlowDiagram,
+  AuthzPointsDiagram,
   BatchPlayground,
   ClaimPlayground,
   FailurePointPlayground,

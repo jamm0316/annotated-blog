@@ -70,7 +70,7 @@ draft: false
 - PIP(Policy Information Point, 정책 정보 지점): 사용자의 역할, 리소스의 담당자처럼 결정에 필요한 정보를 가져온다. Repository에 해당한다.
 - PAP(Policy Administration Point, 정책 관리 지점): 관리자가 정책을 만들고 고치는 곳이다. 요청이 지나가는 흐름 밖에 있다.
 
-<Figure src="/posts/channeltalk-meetup-authorization/06-pep-pdp-pip-pap.png" alt="PEP, PDP, PIP, PAP 네 지점과 요청 흐름" width={1024} height={238} />
+<AuthzPointsDiagram caption="인가의 네 구성 요소. 상자에 올리면 이어진 화살표가 강조된다" />
 
 여기서 PEP와 PDP는 요청을 막고 허용을 결정하는 지점이라 경계가 명확한데, PAP와 PIP는 둘 다 데이터를 다루는 지점이라 약간 혼동될 수 있다. 둘의 차이는 PAP는 정책을 다루고, PIP는 정보를 다룬다는 것이다.
 
@@ -94,7 +94,13 @@ PDP가 읽는 정책을 한 단계 더 들여다보자. 인가 정책은 주체�
 
 이 세 가지 요소를 알면 접근 제어 모델에 대해 한 층 더 깊이 이해할 수 있다. 모델마다 셋 중 주로 보는 대상이 다르기 때문이다.
 
-<Figure src="/posts/channeltalk-meetup-authorization/07-models.png" alt="접근 제어 모델(DAC, MAC, RBAC, ABAC, ReBAC)별 주로 보는 대상과 판단 기준 표" width={1024} height={487} />
+| 접근 제어 모델 | 주로 보는 대상 | 판단 기준 |
+| --- | --- | --- |
+| DAC (Discretionary) | resource의 소유자 | 리소스 소유자가 누구에게 권한을 줄지 정한다 |
+| MAC (Mandatory) | subject와 resource의 보안 등급 | 시스템이 정한 등급이 맞아야 접근할 수 있다 |
+| RBAC (Role-Based) | subject의 역할 | 역할에 이 action이 있는가 |
+| ABAC (Attribute-Based) | subject, resource, 환경의 속성 | 속성 조합이 조건을 만족하는가 (같은 팀, 근무 시간 등) |
+| ReBAC (Relationship-Based) | subject와 resource의 관계 | 둘 사이에 필요한 관계가 있는가 (담당자, 소속 팀 등) |
 
 표를 위에서 아래로 내려오면 subject 쪽에서 resource 쪽으로 관심이 옮겨 간다. RBAC은 “이 역할이 유저챗을 조회할 수 있는가”까지 답할 수 있지만, 유저챗 하나를 볼 수 있는지는 그 유저챗과 사용자의 관계를 봐야 답할 수 있다. 앞에서 본 coarse-grained와 fine-grained의 차이가 여기서도 드러난다.
 
@@ -104,7 +110,7 @@ PDP가 읽는 정책을 한 단계 더 들여다보자. 인가 정책은 주체�
 
 채널톡의 데이터는 계정, 채널, 유저챗으로 이루어져 있고, 여기서 채널이 테넌트다. 관리자는 역할별로 권한을 정할 수 있고, 역할마다 subject, action, resource로 권한이 주어진다.
 
-<Figure src="/posts/channeltalk-meetup-authorization/08-userchat-flow.png" alt="유저챗 목록 요청이 게이트웨이의 인증과 coarse-grained 확인, 애플리케이션의 역할 확인과 fine-grained 확인을 거치는 흐름도" width={1024} height={1087} />
+<AuthzFlowDiagram caption="유저챗 목록 한 페이지가 보이기까지의 인가 흐름. 단계에 올리면 이어진 화살표가 강조된다" />
 
 보통의 애플리케이션 서비스는 게이트웨이 같은 단일 접근 라우터를 두고, 애플리케이션은 그 뒤에 둔다. 요청이 들어오면 게이트웨이는 먼저 JWT의 서명과 만료를 확인해 우리 서버의 사용자인지 확인한다. 엄밀히 말하면 이 단계는 인가가 아니라 인증이다.
 

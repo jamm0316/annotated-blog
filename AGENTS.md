@@ -83,6 +83,8 @@ draft: false
 | 컴포넌트 | 용도 |
 | --- | --- |
 | `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP. 누르면 화면 가득 크게 본다 |
+| `<AuthzPointsDiagram caption />` | 인가 네 구성 요소(PEP·PDP·PIP·PAP) 구조도를 원래 모양대로 그린다. 움직임은 클래스 다이어그램과 같다 (`channeltalk-meetup-authorization`) |
+| `<AuthzFlowDiagram caption />` | 유저챗 목록 요청의 인가 흐름도(게이트웨이·애플리케이션 묶음, 아니오 분기는 점선). 움직임은 같다 (`channeltalk-meetup-authorization`) |
 | `<FigureRow>` 안에 `<Figure>` 2~3장 | 그림을 가로 한 줄에 나란히 놓는다(Medium 이미지 그리드). 각 그림이 가로/세로 비율만큼 폭을 나눠 높이가 같아진다 (`channeltalk-meetup-authorization`) |
 | `<LoaderPlayground t r pool caption />` | 동시 로더 수 ≒ T × R 을 독자가 바꿔 보는 그림 (`cache-stampede`) |
 | `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
@@ -95,6 +97,7 @@ draft: false
 | `<RecoveryPlayground timeout stale longest caption />` | 장면 버튼(본문 설정 / 회수 기준이 짧으면 / 워커가 죽으면)을 누르면 시간 축이 흐르며 회수와 AI 중복 호출이 보인다 (`async-job-queue-without-broker`) |
 | `<FailurePointPlayground caption />` | 실패 장면 버튼을 누르면 시퀀스가 재생되며 실패 지점이 켜지고 다시 실행되는 줄(×2)과 토큰 차감 횟수가 보인다 (`async-job-queue-without-broker`) |
 
+- 다이어그램(구조도·흐름도·UML)과 표는 이미지로 넣지 않는다. 다이어그램은 SVG 컴포넌트로 그리고(상자·화살표 그림은 `BoxDiagram` 에 데이터만 넘겨 만든다), 표는 마크다운 표로 쓴다. `Figure` 는 사진·캡처에만 쓴다.
 - 글 안의 그림은 독자가 조작법을 익혀야 하는 놀이터로 만들지 않는다. 모델하우스처럼 스스로 한 번 움직이거나, 장면 버튼 한 번에 그 장면이 처음부터 재생돼 문제가 나는 곳을 짚어 보이게 한다. 슬라이더나 한 칸씩 넘기기처럼 독자가 값을 조정하는 방식은 새로 만들지 않는다. 원래 다이어그램(UML·상태도)은 모양을 그대로 두고 움직임만 조금 더한다.
 - 컴포넌트에 함수를 props 로 넘기지 않는다. 서버에서 그리는 MDX 가 클라이언트 컴포넌트로 함수를 넘기면 오류가 난다.
 - 그림에 쓰는 숫자도 본문에 있는 값만 쓴다.

@@ -5,6 +5,8 @@
 ## 코드 위치
 
 - `src/components/mdx/Figure.tsx` — 그림과 캡션(서버 컴포넌트)
+- `src/components/mdx/BoxDiagram.tsx` — 상자·화살표 다이어그램(구조도·흐름도) 공용 렌더러. 글 전용 다이어그램은 데이터(상자·묶음·화살표 좌표)만 정의하고 이것으로 그린다
+- `src/components/mdx/AuthzPointsDiagram.tsx`·`AuthzFlowDiagram.tsx` — 인가 구성 요소 구조도와 유저챗 목록 인가 흐름도(`channeltalk-meetup-authorization`)
 - `src/components/mdx/FigureRow.tsx` — `Figure` 여러 장을 가로 한 줄에 놓는 묶음(서버 컴포넌트)
 - `src/components/mdx/ZoomImage.tsx` — next/image 그림, 누르면 `<dialog>` 로 크게 보기
 - `src/components/mdx/CodeBlock.tsx` — 코드 블록 위 언어 이름·복사 버튼(`pre` 대체)
@@ -61,6 +63,7 @@ Playground 의 상태는 모두 컴포넌트 안의 `useState` 뿐이다. 서버
 - **QueueClassDiagram·JobStateDiagram**: 원문 그림의 배치를 SVG 좌표로 옮겼다. 화살표는 `pathLength=1` 대시로 한 번 그려지고(`--dur-slow`), 그 뒤 화살촉·라벨이 뜬다. 박스에 올리거나 포커스하면 그 박스와 이어진 화살표만 강조하고, 클래스 다이어그램은 화살표와 짝인 저장소 메서드도 강조한다. 클래스 다이어그램은 좁은 화면에서 그림만 가로로 민다(최소 620px).
 - **PlaygroundBar**: 눈금 끝 `scale = max(value, limit × 1.25)`. 한도 안은 칠하고(`playground__acquired`) 넘친 만큼은 빗금(`playground__waiting`). 한도선 위치가 60% 를 넘으면 라벨을 선 왼쪽에 붙인다(`playground__pool--end`).
 - **CodeBlock**: `data-language` 를 `LABELS`(bash→Shell, dockerfile, html, http, java, json·jsonc→JSON, text, xml)로 바꿔 보이고, 없는 언어는 그대로, 속성이 없으면 `text`. 복사는 `pre.innerText` 를 클립보드에 쓰고 1500ms 동안 `복사됨`.
+- **BoxDiagram**: 상자 모양은 `box`(사각형)·`pill`(시작·끝)·`db`(원통). 첫 줄은 이름(`diagram__name`), 나머지는 설명(`diagram__member`), `em` 줄은 기울임(`diagram__em`), `wrap: true` 면 모든 줄이 이름 모양. 묶음(`groups`)은 점선 사각형과 왼쪽 위 이름. `dashed` 화살표는 한 번 그리기 대신 선이 다 그려질 즈음 나타난다(`diagram__edge--dash`). 움직임·강조는 상태 다이어그램과 같다. `maxWidth`·`minWidth`(px)로 화면 폭을 정한다.
 - **FigureRow**: `Figure` 가 `figure` 에 `--ar = width / height` 를 달고, `.figure-row`(flex, `gap: 12px`) 안에서 각 그림이 `flex: var(--ar) 1 0` 으로 폭을 나눠 그림 높이가 같아진다. 줄 안의 그림은 `margin: 0`, `padding: 12px`. 좁은 화면에서도 한 줄을 유지한다.
 - **ZoomImage**: 본문 그림은 `sizes="(max-width: 760px) 100vw, 680px"`, 확대 그림은 `sizes="min(100vw, <width>px)"`·`loading="lazy"`·`maxWidth: <width>px`(원본보다 크게 늘리지 않음). `<dialog>.showModal()` 로 열고 아무 데나 누르거나 Esc 로 닫는다.
 
@@ -71,7 +74,7 @@ Playground 의 상태는 모두 컴포넌트 안의 `useState` 뿐이다. 서버
 - **본문 그림과 같은 이름·숫자**: 작업 큐 그림 넷의 상태 이름·전이·관계·주기·재시도 숫자는 `async-job-queue-without-broker` 본문(원문 Medium 그림)에서 옮겼다. 컴포넌트 안에 두지만 본문을 바꾸면 같이 바꾼다.
 - **흐름도와 한 칸도 다르지 않게**: `NextStepPlayground` 의 분기는 `public/posts/two-factor-auth-design/08-next-step.png` 흐름도를 옮긴 것이다. 하나를 바꾸면 다른 쪽도 바꾼다.
 - **함수 props 금지**: MDX 는 서버에서 그려지므로 클라이언트 컴포넌트에 넘기는 props 는 숫자·문자열만 쓴다. `caption` 도 문자열이다(`Figure` 만 children 캡션).
-- **클라이언트 경계**: `Figure`·`FigureRow`·`PlaygroundBar` 는 서버 컴포넌트, 나머지는 `'use client'`.
+- **클라이언트 경계**: `Figure`·`FigureRow`·`AuthzPointsDiagram`·`AuthzFlowDiagram`·`PlaygroundBar` 는 서버 컴포넌트, 나머지는 `'use client'`.
 
 ## 2. 외부 노출 (Published Language)
 
@@ -80,6 +83,8 @@ Playground 의 상태는 모두 컴포넌트 안의 `useState` 뿐이다. 서버
 ```ts
 Figure({ src: string; alt: string; width: number; height: number; children?: ReactNode })
 FigureRow({ children: ReactNode }) // 안에 Figure 2~3장
+AuthzPointsDiagram({ caption?: string })
+AuthzFlowDiagram({ caption?: string })
 // 원본은 public/posts/<slug>/, src 는 '/posts/<slug>/...' 경로
 LoaderPlayground({ t: number /* ms */; r: number /* 초당 요청 */; pool: number; caption?: string })
 HeapPlayground({ peak: number /* MB */; rows: number; ratio: number /* % */; memory: number /* GB */; caption?: string })
@@ -94,7 +99,7 @@ FailurePointPlayground({ caption?: string })
 CodeBlock(props: ComponentProps<'pre'> & { 'data-language'?: string }) // MDX 의 pre 대체
 ```
 
-내부용: `ZoomImage({ src, alt, width, height })`(Figure 가 씀), `PlaygroundBar({ value, limit, limitLabel, label })`(Loader·Heap 이 씀), `SequenceDiagram({ participants, rows, marks?, counts?, label })`(JobSequence·FailurePoint 가 씀, 좁은 화면에서는 그림만 가로로 민다).
+내부용: `BoxDiagram({ label, width, height, maxWidth?, minWidth?, nodes, edges, groups?, caption? })`(Authz* 가 씀, 데이터만 받는다), `ZoomImage({ src, alt, width, height })`(Figure 가 씀), `PlaygroundBar({ value, limit, limitLabel, label })`(Loader·Heap 이 씀), `SequenceDiagram({ participants, rows, marks?, counts?, label })`(JobSequence·FailurePoint 가 씀, 좁은 화면에서는 그림만 가로로 민다).
 
 ### 지금 글에서 쓰는 곳
 
@@ -106,7 +111,7 @@ CodeBlock(props: ComponentProps<'pre'> & { 'data-language'?: string }) // MDX �
 | `NextStepPlayground` | `two-factor-auth-design` |
 | `QueueClassDiagram`·`JobStateDiagram`·`JobSequencePlayground`·`ClaimPlayground`·`RecoveryPlayground`·`FailurePointPlayground` | `async-job-queue-without-broker` |
 | `Figure` | 그림이 있는 글 대부분 |
-| `FigureRow` | `channeltalk-meetup-authorization` |
+| `FigureRow`·`AuthzPointsDiagram`·`AuthzFlowDiagram` | `channeltalk-meetup-authorization` |
 
 ### DOM·스타일 계약
 
@@ -118,7 +123,7 @@ CodeBlock(props: ComponentProps<'pre'> & { 'data-language'?: string }) // MDX �
 
 ## 3. Context Map
 
-- **posts → playgrounds**: `src/mdx-components.tsx` 가 `Figure`·`FigureRow`·`CodeBlock`·`*Playground` 를 import 해 등록한다. 다른 도메인은 이 폴더를 직접 import 하지 않는다.
+- **posts → playgrounds**: `src/mdx-components.tsx` 가 `Figure`·`FigureRow`·`Authz*Diagram`·`CodeBlock`·`*Playground` 를 import 해 등록한다. 다른 도메인은 이 폴더를 직접 import 하지 않는다.
 - **posts(MDX 설정) → CodeBlock**: `next.config.ts` 의 `rehype-pretty-code` 가 만든 `pre`(`data-language` 속성, `--code-*` CSS 변수 색)를 받는다.
 - **playgrounds → shell**: 색·글꼴·모양은 `src/app/globals.css` 토큰과 클래스에 기댄다.
 - **museum**: 박물관 두루마리도 `PostArticle` 을 거쳐 같은 컴포넌트를 그린다(직접 import 는 없다).

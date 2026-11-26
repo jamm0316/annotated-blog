@@ -2216,6 +2216,47 @@ button:active:not(:disabled) {
   stroke: var(--ink);
   stroke-width: 1.5;
 }
+/* 상자·화살표 다이어그램(BoxDiagram): 묶음 칸, 저장소 원통, 기울인 줄, 점선 분기 */
+.diagram__group rect {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-dasharray: 6 4;
+}
+.diagram .diagram__group text {
+  fill: var(--ink-70);
+  font-size: 13px;
+}
+.diagram__db {
+  fill: var(--bg-raised);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+  transition: stroke var(--dur-instant) ease-out;
+}
+.diagram__box.is-on .diagram__db {
+  stroke: var(--ink);
+}
+.diagram__box.is-picked .diagram__db,
+.diagram__box:focus-visible .diagram__db {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.diagram .diagram__em {
+  fill: var(--ink-70);
+  font-size: 13px;
+  font-style: italic;
+}
+/* 점선은 한 번 그리기 대신 선이 다 그려질 즈음 나타난다 */
+.diagram__edge--dash path {
+  stroke-dasharray: 6 5;
+  stroke-dashoffset: 0;
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast) ease-out var(--dur-slow),
+    stroke var(--dur-instant) ease-out;
+}
+.is-drawn .diagram__edge--dash path {
+  opacity: 1;
+}
 @media (prefers-reduced-motion: reduce) {
   .diagram__edge path,
   .diagram__head,
