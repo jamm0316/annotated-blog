@@ -42,9 +42,10 @@ draft: false
 
 이 시험의 목적은 흙의 입도 분포를 파악하기 위함인데, 시험 방법이 위에서 말한 인가의 과정과 닮아 있다. 방법은 간단하다. 격자가 큰 체를 위에 놓고, 아래로 내려갈수록 격자가 작은 체를 배치한다. 그리고 기계에 넣고 마구 흔들어 주면 된다. 그러면 자연스럽게 위쪽에는 크기가 크고 거친 입자가, 아래쪽에는 아주 작고 부드러운 입자가 각 체에 남게 된다. 여기서 격자가 가장 큰 체를 Coarsest Sieve라고 하며, 반대로 가장 미세한 체를 Finest Sieve라고 한다.
 
-<Figure src="/posts/channeltalk-meetup-authorization/04-sieve.jpg" alt="위에서부터 Coarsest Sieve, 중간 체들, Finest Sieve, Pan 순으로 쌓인 체 그림" width={250} height={489} />
-
-<Figure src="/posts/channeltalk-meetup-authorization/05-sieve.jpg" alt="체분석 시험으로 걸러진 흙을 저울에 다는 모습" width={250} height={350} />
+<FigureRow>
+  <Figure src="/posts/channeltalk-meetup-authorization/04-sieve.jpg" alt="위에서부터 Coarsest Sieve, 중간 체들, Finest Sieve, Pan 순으로 쌓인 체 그림" width={250} height={489} />
+  <Figure src="/posts/channeltalk-meetup-authorization/05-sieve.jpg" alt="체분석 시험으로 걸러진 흙을 저울에 다는 모습" width={250} height={350} />
+</FigureRow>
 
 소프트웨어 공학에서도 이러한 개념을 적용한 것 같다. 인가를 크게 보면 coarse-grained 인가와 fine-grained 인가로 나눌 수 있다. 위에서 언급한 게이트웨이를 통한 테넌트 확인, 역할을 이용한 확인, 리소스와의 관계를 이용한 확인 등 리소스에 접근 가능한 subject를 얼마나 세밀하게 판단할 수 있는가에 따라 나뉜다.
 

@@ -9,6 +9,7 @@ import { ClaimPlayground } from '@/components/mdx/ClaimPlayground';
 import { CodeBlock } from '@/components/mdx/CodeBlock';
 import { FailurePointPlayground } from '@/components/mdx/FailurePointPlayground';
 import { Figure } from '@/components/mdx/Figure';
+import { FigureRow } from '@/components/mdx/FigureRow';
 import { HeapPlayground } from '@/components/mdx/HeapPlayground';
 import { JobSequencePlayground } from '@/components/mdx/JobSequencePlayground';
 import { JobStateDiagram } from '@/components/mdx/JobStateDiagram';
@@ -28,6 +29,7 @@ const components: MDXComponents = {
   ClaimPlayground,
   FailurePointPlayground,
   Figure,
+  FigureRow,
   HeapPlayground,
   JobSequencePlayground,
   JobStateDiagram,

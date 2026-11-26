@@ -83,6 +83,7 @@ draft: false
 | 컴포넌트 | 용도 |
 | --- | --- |
 | `<Figure src alt width height>캡션</Figure>` | 그림. 원본은 `public/posts/<slug>/`, 화면에는 next/image 가 줄인 WebP. 누르면 화면 가득 크게 본다 |
+| `<FigureRow>` 안에 `<Figure>` 2~3장 | 그림을 가로 한 줄에 나란히 놓는다(Medium 이미지 그리드). 각 그림이 가로/세로 비율만큼 폭을 나눠 높이가 같아진다 (`channeltalk-meetup-authorization`) |
 | `<LoaderPlayground t r pool caption />` | 동시 로더 수 ≒ T × R 을 독자가 바꿔 보는 그림 (`cache-stampede`) |
 | `<HeapPlayground peak rows ratio memory caption />` | 측정 피크 힙을 건수에 비례해 늘려 컨테이너 힙 한도와 비교 (`ttlb-ttfb-download-api-bottleneck`) |
 | `<BatchPlayground n batch batchMb caption />` | 쿼리 수 N → ⌈N/batch⌉ 와 batch 메모리 (`stream-pipeline-download-oom`) |
